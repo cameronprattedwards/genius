@@ -1,4 +1,4 @@
 genius
 ======
 
-A lightweight, intuitive data framework for JavaScript apps
+A lightweight data framework for JavaScript apps
