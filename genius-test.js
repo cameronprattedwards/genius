@@ -1,3 +1,133 @@
+var date = new Date();
+while ((new Date() - date) < 2000);
+console.log("starting");
+
+describe("Plain classes", function () {
+    it("should initialize custom class types", function () {
+        var GeniusClass = genius.Resource.extend({});
+        var PlainClass = function (options) {
+            this.str = "I'm a string";
+            this.num = 123;
+            this.optionsHash = options;
+        };
+
+        PlainClass.prototype = {
+            getString: function () { return "An arbitrary string"; },
+            constructor: PlainClass
+        };
+
+        var TestClass = genius.Resource.extend({
+            genius: genius.types(GeniusClass),
+            plain: genius.types(PlainClass, { nullable: false })
+        });
+        //custom class types are nullable by default.
+
+        expect(function () {
+            new TestClass();
+        }).toThrow();
+        var myTestClass = new TestClass({
+            plain: {
+                testProperty: "Test property"
+            }
+        });
+
+        expect(myTestClass.genius()).toBe(null);
+        expect(function () {
+            myTestClass.genius(new PlainClass());
+        }).toThrow();
+        expect(myTestClass.genius()).toBe(null);
+        var myGeniusClass = new GeniusClass();
+        expect(function () { myTestClass.genius(myGeniusClass); }).not.toThrow();
+        expect(myTestClass.genius()).toBe(myGeniusClass);
+
+        var myPlainClass = myTestClass.plain();
+
+        expect(myPlainClass instanceof PlainClass).toBe(true);
+        expect(function () { myTestClass.plain(123); }).toThrow();
+        expect(myTestClass.plain()).toBe(myPlainClass);
+        expect(myPlainClass.options).toBeUndefined();
+        expect(myPlainClass.testProperty()).toBe("Test property");
+        expect(myPlainClass.str).toBe("I'm a string");
+        expect(myPlainClass.getString()).toBe("An arbitrary string");
+
+        var options = { option1: "abc", option2: "123" };
+        var myPlainClass2 = new PlainClass(options);
+        myTestClass.plain(myPlainClass2);
+        expect(myTestClass.plain()).toBe(myPlainClass2);
+        expect(myTestClass.plain().optionsHash).toBe(options);
+
+        var myTestClass2 = new TestClass({
+            plain: {
+                testProperty: "Another test property",
+                propertyNotInDef: "Test property - not in definition"
+            }
+        });
+
+        expect(myTestClass2.plain().propertyNotInDef()).toBe("Test property - not in definition");
+    });
+
+});
+
+describe("Dynamics", function () {
+    it("should accept any data for dynamic types", function () {
+        var Class = genius.Resource.extend({
+            dyno: genius.types.dynamic(),
+            dynoRequired: genius.types.dynamic({ nullable: false }),
+            dynoDefault: genius.types.dynamic({ nullable: false, defaultTo: "Dyno default" }),
+            dynoDynamicDefault: genius.types.dynamic({ nullable: false, defaultTo: function () { return new Date(); } })
+        });
+//       expect(function () { var myClass = new Class(); }).toThrow();
+        var myClass = new Class({ dynoRequired: "Required dyno" });
+        var testDate = new Date();
+        expect(myClass.dynoRequired()).toBe("Required dyno");
+        expect(function () { myClass.dyno(123); }).not.toThrow();
+        expect(myClass.dyno()).toBe(123);
+        expect(function () { myClass.dyno("abc"); }).not.toThrow();
+        expect(function () { myClass.dynoDefault(null); }).toThrow();
+        expect(myClass.dyno()).toBe("abc");
+        expect(myClass.dynoDefault()).toBe("Dyno default");
+        expect(testDate - myClass.dynoDynamicDefault()).toBeLessThan(50);
+    });
+});
+
+describe("Type accessors", function () {
+    it("should initialize to specified value", function () {
+        var num = genius.types.number().getInstance().initialize(109).accessor();
+        expect(num()).toBe(109);
+        var str = genius.types.string().getInstance().initialize("My string").accessor();
+        expect(str()).toBe("My string");
+        var dyn = genius.types.dynamic().getInstance().initialize("Different string").accessor();
+        expect(dyn()).toBe("Different string");
+        var myDate = new Date();
+        var date = genius.types.date().getInstance().initialize(myDate).accessor();
+        expect(date()).toBe(myDate);
+        function Panther() { };
+        var myPanther = new Panther();
+        var panther = genius.types(Panther).getInstance().initialize(myPanther).accessor();
+        expect(panther()).toBe(myPanther);
+
+        var Class = genius.Resource.extend({
+            num: genius.types.number(),
+            bool: genius.types.bool(),
+            str: genius.types.string(),
+            dyn: genius.types.dynamic(),
+            panther: genius.types(Panther)
+        });
+        var myClass = new Class({
+            num: 10,
+            bool: true,
+            str: "String",
+            dyn: "Another string",
+            panther: {}
+        });
+        expect(myClass.num()).toBe(10);
+        expect(myClass.bool()).toBe(true);
+        expect(myClass.str()).toBe("String");
+        expect(myClass.dyn()).toBe("Another string");
+        expect(myClass.panther()).toEqual(jasmine.any(Panther));
+    });
+});
+
 describe("The genius box", function () {
     var Zombie, ZombieKing;
     beforeEach(function () {
@@ -68,6 +198,7 @@ describe("The genius box", function () {
         expect(genius.box.Service).toBe(factory);
     });
 });
+
 describe("Type specifications", function () {
 
     it("should initialize boolean types to booleans", function () {
@@ -82,28 +213,8 @@ describe("Type specifications", function () {
         expect(function () { myClass.bool(undefined); }).toThrow();
         expect(function () { myClass.nullable(null); }).not.toThrow();
         expect(function () { myClass.nullable(undefined); }).not.toThrow();
-
     });
 
-    it("should accept any data for dynamic types", function () {
-        var Class = genius.Resource.extend({
-            dyno: genius.types.dynamic(),
-            dynoRequired: genius.types.dynamic({ nullable: false }),
-            dynoDefault: genius.types.dynamic({ nullable: false, defaultTo: "Dyno default" }),
-            dynoDynamicDefault: genius.types.dynamic({ nullable: false, defaultTo: function () { return new Date(); } })
-        });
-        expect(function () { var myClass = new Class(); }).toThrow();
-        var myClass = new Class({ dynoRequired: "Required dyno" });
-        var testDate = new Date();
-        expect(myClass.dynoRequired()).toBe("Required dyno");
-        expect(function () { myClass.dyno(123); }).not.toThrow();
-        expect(myClass.dyno()).toBe(123);
-        expect(function () { myClass.dyno("abc"); }).not.toThrow();
-        expect(function () { myClass.dynoDefault(null); }).toThrow();
-        expect(myClass.dyno()).toBe("abc");
-        expect(myClass.dynoDefault()).toBe("Dyno default");
-        expect(testDate - myClass.dynoDynamicDefault()).toBeLessThan(10);
-    });
 
     it("should set options on custom class types", function () {
         var Class = genius.Resource.extend({
@@ -125,63 +236,6 @@ describe("Type specifications", function () {
     //    expect(myClass.prop()).toBe("Another string");
     //});
 
-    it("should initialize custom class types", function () {
-        var GeniusClass = genius.Resource.extend({});
-        var PlainClass = function (options) {
-            this.str = "I'm a string";
-            this.num = 123;
-            this.optionsHash = options;
-        };
-
-        PlainClass.prototype = {
-            getString: function () { return "An arbitrary string"; }
-        };
-
-        var TestClass = genius.Resource.extend({
-            genius: genius.types(GeniusClass),
-            plain: genius.types(PlainClass, { nullable: false })
-        });
-        //custom class types are nullable by default.
-
-        expect(function () { new TestClass(); }).toThrow();
-        var myTestClass = new TestClass({
-            plain: {
-                testProperty: "Test property"
-            }
-        });
-
-        expect(myTestClass.genius()).toBe(null);
-        expect(function () { myTestClass.genius(new PlainClass()); }).toThrow();
-        expect(myTestClass.genius()).toBe(null);
-        var myGeniusClass = new GeniusClass();
-        expect(function () { myTestClass.genius(myGeniusClass); }).not.toThrow();
-        expect(myTestClass.genius()).toBe(myGeniusClass);
-
-        var myPlainClass = myTestClass.plain();
-
-        expect(myPlainClass instanceof PlainClass).toBe(true);
-        expect(function () { myTestClass.plain(123); }).toThrow();
-        expect(myTestClass.plain()).toBe(myPlainClass);
-        expect(myPlainClass.options).toBeUndefined();
-        expect(myPlainClass.testProperty()).toBe("Test property");
-        expect(myPlainClass.str).toBe("I'm a string");
-        expect(myPlainClass.getString()).toBe("An arbitrary string");
-
-        var options = { option1: "abc", option2: "123" };
-        var myPlainClass2 = new PlainClass(options);
-        myTestClass.plain(myPlainClass2);
-        expect(myTestClass.plain()).toBe(myPlainClass2);
-        expect(myTestClass.plain().optionsHash).toBe(options);
-
-        var myTestClass2 = new TestClass({
-            plain: {
-                testProperty: "Another test property",
-                propertyNotInDef: "Test property - not in definition"
-            }
-        });
-
-        expect(myTestClass2.plain().propertyNotInDef()).toBe("Test property - not in definition");
-    });
 
     it("should initialize number types to numbers", function () {
         var Class = genius.Resource.extend({
@@ -205,7 +259,7 @@ describe("Type specifications", function () {
         expect(myClass.nullNumber()).toBe(123);
 
         expect(myClass.defaultNumber()).toBe(123);
-        expect(testDate.getTime() - myClass.dynamicDefaultNumber()).toBeLessThan(10);
+        expect(testDate.getTime() - myClass.dynamicDefaultNumber()).toBeLessThan(50);
     });
 
     it("should initialize string types to strings", function () {
@@ -239,7 +293,7 @@ describe("Type specifications", function () {
         expect(myClass.defaultString()).toBe("Default string");
 
         expect(parseInt(myClass.dynamicDefaultString()).toString()).not.toBe("NaN");
-        expect(testDate - new Date(parseInt(myClass.dynamicDefaultString()))).toBeLessThan(10);
+        expect(testDate - new Date(parseInt(myClass.dynamicDefaultString()))).toBeLessThan(50);
 
         var myInitializedClass = new Class({
             plainString: "Plain string",
@@ -267,13 +321,13 @@ describe("Type specifications", function () {
 
         var myClass = new Class();
         expect(myClass.plainDate()).toEqual(jasmine.any(Date));
-        expect(new Date() - myClass.plainDate()).toBeLessThan(10);
+        expect(new Date() - myClass.plainDate()).toBeLessThan(50);
         expect(function () { myClass.plainDate(null); }).not.toThrow();
         expect(function () { myClass.plainDate(undefined); }).not.toThrow();
         expect(function () { myClass.plainDate("Not a date"); }).toThrow();
 
         expect(myClass.nullableDate()).toEqual(jasmine.any(Date));
-        expect(new Date() - myClass.nullableDate()).toBeLessThan(10);
+        expect(new Date() - myClass.nullableDate()).toBeLessThan(50);
         expect(function () { myClass.nullableDate(null); }).not.toThrow();
         expect(function () { myClass.nullableDate(undefined); }).not.toThrow();
 
@@ -284,7 +338,7 @@ describe("Type specifications", function () {
 
         //setTimeout(function () {
         //    var myClass2 = new Class();
-        //    expect(new Date() - myClass2.dateWithDynamicDefault()).toBeLessThan(10);
+        //    expect(new Date() - myClass2.dateWithDynamicDefault()).toBeLessThan(50);
         //});
     });
 
@@ -323,6 +377,523 @@ describe("Type specifications", function () {
                 date: genius.types.date({ defaultTo: function () { return "Not a date."; } })
             });
         }).toThrow();
+    });
+
+});
+
+describe("Observables", function () {
+    it("should fire a change event", function () {
+        var test = "Unchanged";
+        var defaultDate = new Date();
+        var mine = genius.types.date({ defaultTo: defaultDate }).getInstance().accessor();
+        mine.subscribe(function () {
+            test = "Changed";
+        });
+        mine(defaultDate);
+        expect(test).toBe("Unchanged");
+        mine(new Date());
+        expect(test).toBe("Changed");
+    });
+});
+
+describe("Genius config", function () {
+    it("should allow transformation of JSON into camel case", function () {
+        expect(genius.config.ajax.transformToCamelCase()).toBe(false);
+        var json = {
+            TestVar: "Test Var",
+            SubObj: {
+                Test1: "Test 1",
+                Test2: "Test 2"
+            }
+        };
+        var Class = genius.Resource.extend({
+            testVar: genius.types.string()
+        });
+        var myClass = new Class(json);
+        expect(myClass.testVar()).toBe("");
+        expect(myClass.TestVar()).toBe("Test Var");
+
+        genius.config.ajax.transformToCamelCase(true);
+        //we must redefine, since midstream changes can't change declared classes.
+        var Class2 = genius.Resource.extend({
+            testVar: genius.types.string()
+        });
+        var myClass = new Class2(json);
+        expect(myClass.testVar()).toBe("Test Var");
+        expect(myClass.TestVar).toBeUndefined();
+        expect(myClass.subObj().test1).not.toBeUndefined();
+        expect(myClass.subObj().test2).not.toBeUndefined();
+        expect(myClass.subObj().Test1).toBeUndefined();
+        expect(myClass.subObj().Test2).toBeUndefined();
+
+        var Class3 = genius.Resource.extend({
+            testVar: genius.types.string(),
+            TestVar: genius.types.string()
+        });
+        var myClass2 = new Class3(json);
+        expect(myClass2.testVar()).toBe("Test Var");
+        expect(myClass2.TestVar()).toBe("Test Var");
+        myClass2.testVar("Another var");
+        expect(myClass2.testVar()).toBe("Another var");
+        expect(myClass2.TestVar()).toBe("Another var");
+        myClass2.TestVar("Last var");
+        expect(myClass2.testVar()).toBe("Last var");
+        expect(myClass2.TestVar()).toBe("Last var");
+    });
+
+    it("should set default parser on a type", function () {
+        var dateParse = genius.config.types.date.parseInit(),
+            numParse = genius.config.types.number.parseInit(),
+            boolParse = genius.config.types.bool.parseInit();
+        genius.config.types.number.parseInit(function (input) {
+            return parseInt(input);
+        });
+        genius.config.types.bool.parseInit(function (input) {
+            if (input == "True")
+                return true;
+            else
+                return false;
+        });
+        function Panther(name, age, color) {
+            this.name = name + "Pantherson";
+            this.age = age + 2;
+            this.color = color;
+        };
+        genius.config.types.add("panther", Panther, {
+            parse: function (input) {
+                return new Panther(input.name, input.age, input.color);
+            }
+        });
+        var timestamp = 1387521272839;
+        genius.config.types.date.parseInit(function (input) {
+            return new Date(parseInt(input));
+        });
+        var pantherConfig = genius.config.types.panther;
+        var Class = genius.Resource.extend({
+            date: genius.types.date(),
+            num: genius.types.number(),
+            bool: genius.types.bool(),
+            panther: genius.types.panther()
+        });
+        var myClass = new Class({
+            date: timestamp,
+            num: "10191",
+            bool: "True",
+            panther: {
+                name: "Pansy",
+                age: 20,
+                color: "black"
+            }
+        });
+        expect(myClass.date().getTime()).toBe(timestamp);
+        expect(myClass.num()).toBe(10191);
+        expect(myClass.bool()).toBe(true);
+        expect(myClass.panther() instanceof Panther).toBe(true);
+
+        genius.config.reset();
+        //All parsing methods should be reset to their originals,
+        //But new custom types will remain, unless {hard: true} is
+        //specified on reset.
+        expect(genius.config.types.bool.parseInit()).toBe(boolParse);
+        expect(genius.config.types.date.parseInit()).toBe(dateParse);
+        expect(genius.config.types.number.parseInit()).toBe(numParse);
+        expect(genius.config.types.panther).toBe(pantherConfig);
+        genius.config.reset({ hard: true });
+        expect(genius.config.types.panther).toBeUndefined();
+    });
+
+    it("should toggle default nullability of types", function () {
+        function testInit() {
+            expect(genius.config.types.date.nullable()).toBe(true);
+            expect(genius.config.types.custom.nullable()).toBe(true);
+            expect(genius.config.types.bool.nullable()).toBe(false);
+        }
+        testInit();
+        genius.config.types.date.nullable(true);
+        genius.config.types.custom.nullable(false);
+        genius.config.types.bool.nullable(false);
+
+        var ChildClass = function () { };
+        var Class = genius.Resource.extend({
+            date: genius.types.date(),
+            child: genius.types(ChildClass),
+            bool: genius.types.bool()
+        });
+        expect(function () { new Class(); }).toThrow();
+        var myClass = new Class({ child: {}, num: 19 });
+        expect(function () { myClass.date(null) }).not.toThrow();
+        expect(myClass.date()).toBe(null);
+        expect(myClass.num()).toBe(19);
+        expect(function () { myClass.bool(null); }).toThrow();
+        genius.config.reset();
+        testInit();
+    });
+
+    it("should change default values for types", function () {
+        function testInit() {
+            expect(genius.config.types.number.defaultTo()).toBe(0);
+            expect(typeof genius.config.types.date.defaultTo()).toBe("function");
+            expect(new Date() - genius.config.types.date.defaultTo()()).toBeLessThan(50);
+            expect(genius.config.types.bool.defaultTo()).toBe(false);
+        };
+        testInit();
+        genius.config.types.number.defaultTo(19);
+        var testDate = new Date(2013, 1, 1);
+        genius.config.types.bool.defaultTo(true);
+        genius.config.types.date.defaultTo(testDate);
+
+        var Class = genius.Resource.extend({
+            num: genius.types.number(),
+            date: genius.types.date(),
+            bool: genius.types.bool()
+        });
+        var myClass = new Class();
+        expect(myClass.num()).toBe(19);
+        expect(myClass.date()).toBe(testDate);
+        expect(myClass.bool()).toBe(true);
+        genius.config.types.date.defaultTo(function () { return new Date(2013, 1, 1); });
+        genius.config.types.number.defaultTo(function () { return new Date().getTime(); });
+        //As a discouragement for reconfiguring midstream, types defined before reconfiguration will not be reconfigured.
+        expect(myClass.date()).toBe(testDate);
+        var Class2 = genius.Resource.extend({
+            num: genius.types.number(),
+            date: genius.types.date()
+        });
+        var myClass2 = new Class2();
+        var class2Date = myClass2.date();
+        expect(class2Date).not.toBe(testDate);
+        expect(class2Date.getFullYear()).toBe(2013);
+        expect(class2Date.getMonth()).toBe(1);
+        expect(class2Date.getDate()).toBe(1);
+        expect(new Date().getTime() - myClass2.num()).toBeLessThan(50);
+
+        genius.config.reset();
+        testInit();
+    });
+});
+
+describe("A deferred", function () {
+    var test, test2, test3, test4, deferred;
+    function init() {
+        test = "One string";
+        test2 = "Two string";
+        test3 = "";
+        test4 = "";
+        deferred = genius.deferred();
+        deferred
+            .done(function (var1, var2) { test = "Red string " + var1 + " and " + var2; })
+            .done(function (var1, var2) { test2 = "Blue string " + var1 + " and " + var2; })
+            .fail(function (var1, var2) { test = "Green string " + var1 + " and " + var2; })
+            .fail(function (var1, var2) { test2 = "Yellow string " + var1 + " and " + var2; })
+            .always(function (var1, var2) { test3 = "Orange string " + var1 + " and " + var2; })
+            .always(function (var1, var2) { test4 = "Violet string " + var1 + " and " + var2; });
+    }
+
+    beforeEach(function () {
+        init();
+    });
+
+    it("should supply promises", function () {
+        var test1 = "", test2 = "";
+        var promise = deferred.promise();
+        promise.done(function () { test1 = "Success"; }).fail(function () { test1 = "Failure"; }).always(function () { test2 = "Complete"; });
+        deferred.resolve();
+        expect(test1).toBe("Success");
+        expect(test2).toBe("Complete");
+    });
+
+    it("should execute success callbacks on resolve()", function () {
+        expect(test).toBe("One string");
+        expect(test2).toBe("Two string");
+        deferred.resolve("Good", "Happiness");
+        expect(test).toBe("Red string Good and Happiness");
+        expect(test2).toBe("Blue string Good and Happiness");
+    });
+
+    it("should execute fail callbacks on reject()", function () {
+        deferred.reject("Bad", "Sadness");
+        expect(test).toBe("Green string Bad and Sadness");
+        expect(test2).toBe("Yellow string Bad and Sadness");
+    });
+
+    it("should execute always callbacks on reject() or resolve()", function () {
+        deferred.resolve("Good", "Happiness");
+        expect(test3).toBe("Orange string Good and Happiness");
+        expect(test4).toBe("Violet string Good and Happiness");
+        init();
+        deferred.reject("Bad", "Sadness");
+        expect(test3).toBe("Orange string Bad and Sadness");
+        expect(test4).toBe("Violet string Bad and Sadness");
+    });
+});
+
+describe("Resources", function () {
+    it("should allow retrieval of their original options hashes", function () {
+        var Class = genius.Resource.extend({});
+
+        var options = {
+            str: "A string",
+            num: 123,
+            date: new Date(2013, 0, 1),
+            obj: { something: "something else" }
+        };
+        var myClass = new Class(options);
+        expect(myClass.optionsHash()).toBe(options);
+    });
+
+    it("should allow serialization to plain old JavaScript objects", function () {
+        var Sub = genius.Resource.extend({
+            num: genius.types.number({ defaultTo: 19 }),
+            name: genius.types.string({ defaultTo: "Cameron" })
+        });
+
+        var Class = genius.Resource.extend({
+            date: genius.types.date(),
+            num: genius.types.number(),
+            bool: genius.types.bool(),
+            sub: genius.types(Sub, { defaultTo: function () { return new Sub(); } })
+        });
+        var myClass = new Class();
+        var date = myClass.date();
+        expect(date instanceof Date).toBe(true);
+        expect(myClass.toJs()).toEqual({
+            date: date,
+            num: 0,
+            bool: false,
+            sub: {
+                num: 19,
+                name: "Cameron"
+            }
+        });
+        var myClass2 = new Class({ date: new Date(2013, 0, 1), num: 149, bool: true, sub: { name: "Josephus" } });
+        date = myClass2.date();
+        expect(myClass2.toJs()).toEqual({
+            date: date,
+            num: 149,
+            bool: true,
+            sub: {
+                num: 19,
+                name: "Josephus"
+            }
+        });
+    });
+});
+
+describe("Unique models", function () {
+    it("should ensure uniqueness by some key", function () {
+        //A unique key must be nullable.
+        genius.config.types.number.defaultTo(null);
+        expect(function () {
+            var Class = genius.Resource.extend({
+                uniqKey: "id",
+                id: genius.types.number({ nullable: false })
+            });
+        }).toThrow();
+        genius.config.reset();
+        //A unique key must be a number or string
+        expect(function () {
+            genius.Resource.extend({
+                uniqKey: "id",
+                id: genius.types.date()
+            });
+        });
+        var Sub = genius.Resource.extend({
+            uniqKey: "id",
+            id: genius.types.number({ nullable: true, defaultTo: null })
+        });
+        var Class = genius.Resource.extend({
+            uniqKey: "sub.id",
+            sub: genius.types(Sub)
+        });
+        var myClass = new Class({
+            sub: {
+                id: 9
+            }
+        });
+        var myClass2 = new Class({
+            sub: {
+                id: 9
+            },
+            frenchFries: "delicious"
+        });
+        expect(myClass).toBe(myClass2);
+        expect(myClass2.frenchFries()).toBe("delicious");
+    });
+});
+
+describe("Getters and setters", function () {
+    it("should create a hash of dirty properties", function () {
+        var Obj = function () { };
+
+        var Class = genius.Resource.extend({
+            str: genius.types.string(),
+            num: genius.types.number(),
+            date: genius.types.date(),
+            obj: genius.types(Obj)
+        });
+
+        var myClass = new Class({
+            str: "Init string",
+            num: 10,
+            date: new Date(),
+            obj: new Obj()
+        });
+
+        var testDate = new Date();
+        expect(myClass.changedProperties()).toEqual({});
+        myClass.str("Another string");
+        myClass.date(testDate);
+        expect(myClass.changedProperties()).toEqual({ str: "Another string", date: testDate });
+    });
+
+    it("should mark changed variables as dirty", function () {
+        var Class = genius.Resource.extend({
+            test: genius.types.bool()
+        });
+        var myClass = new Class();
+        expect(myClass.test()).toBe(false);
+        expect(myClass.test.isDirty()).toBe(false);
+        myClass.test(false);
+        expect(myClass.test.isDirty()).toBe(false);
+        myClass.test(true);
+        expect(myClass.test.isDirty()).toBe(true);
+    });
+});
+
+describe("Parsers", function () {
+    it("should parse input hash into property", function () {
+        var Class = genius.Resource.extend({
+            date: genius.types.date({
+                parseInit: function (input) {
+                    return new Date(input[0], input[1], input[2]);
+                },
+                parseJs: function (input) {
+                    var split = input.split("/");
+                    return new Date(parseInt(split[0]), parseInt(split[1]), parseInt(split[2]));
+                }
+            })
+        });
+        var myClass = new Class({ date: [2013, 0, 1] });
+        var date = myClass.date();
+        expect(date.getFullYear()).toBe(2013);
+        expect(date.getMonth()).toBe(0);
+        expect(date.getDate()).toBe(1);
+        myClass.date("2014/9/17");
+        date = myClass.date();
+        expect(date.getFullYear()).toBe(2014);
+        expect(date.getMonth()).toBe(9);
+        expect(date.getDate()).toBe(17);
+        var myClass2 = new Class();
+        expect(new Date() - myClass2.date()).toBeLessThan(50);
+    });
+});
+
+describe("Constructors", function () {
+    it("should be called on creation of resource", function () {
+        var Class = genius.Resource.extend({
+            init: function (options) {
+                this.arbitrary = "Arbitrary string";
+                this.hash = JSON.stringify(options);
+            }
+        });
+        var options = { prop: "value" };
+        var myClass = new Class(options);
+        expect(myClass.arbitrary).toBe("Arbitrary string");
+        expect(myClass.hash).toBe(JSON.stringify(options));
+    });
+});
+
+describe("A collection", function () {
+    var Class;
+    beforeEach(function () {
+        Class = genius.Resource.extend({
+            uniqKey: "id",
+            id: genius.types.number({ nullable: true, defaultTo: null }),
+            name: genius.types.string({ defaultTo: "Cameron" })
+        });
+    });
+    it("should allow direct instantiation", function () {
+        var collection = new genius.Collection({ type: genius.types(Class) });
+        collection.concat([{}, { name: "Sara" }, { name: "Jimmy" }]);
+        expect(collection[0] instanceof Class).toBe(true);
+        expect(collection[0].name()).toBe("Cameron");
+        expect(collection[1].name()).toBe("Sara");
+        expect(collection[2].name()).toBe("Jimmy");
+    });
+    it("should allow uniqueness configuration", function () {
+        var collection = new genius.Collection({ type: genius.types(Class), unique: true });
+        collection.concat([{ id: 1, name: "Jimbo" }, { id: 2, name: "Sally" }]);
+        expect(collection.length).toBe(2);
+        collection.push({ id: 1, name: "Bobo" });
+        expect(collection.length).toBe(2);
+        expect(collection[0].name()).toBe("Bobo");
+    });
+    it("should allow class inheritance", function () {
+        var Collection = genius.Collection.extend({ type: genius.types(Class), unique: false });
+        var collection = new Collection();
+        expect(typeof collection.push).toBe("function");
+    });
+});
+
+describe("The route provider", function () {
+    it("should parse route data into routes", function () {
+        var prov = genius.box.RouteProvider();
+        var pattern = "/api/:controller/:action/:id", data = { controller: "zombies", action: "munch", id: 19 };
+        expect(prov.createRoute(pattern, data)).toBe("/api/zombies/munch/19");
+
+        pattern = "/:first-:last/:age";
+        data = { first: "cameron", last: "edwards", age: 25 };
+        expect(prov.createRoute(pattern, data)).toBe("/cameron-edwards/25");
+
+        pattern = "/api/:controller/:action.json";
+        data = { controller: "deer", action: "prance" };
+        expect(prov.createRoute(pattern, data)).toBe("/api/deer/prance.json");
+
+        pattern = "/:attempt/:look/:discover";
+        data = { attempt: "strive", look: "seek", discover: "find", not: "to-yield" };
+        expect(prov.createRoute(pattern, data)).toBe("/strive/seek/find?not=to-yield");
+
+        pattern = "/api";
+        data = { controller: "zombies", action: "munch", id: 1091 };
+        expect(prov.createRoute(pattern, data)).toBe("/api?controller=zombies&action=munch&id=1091");
+
+        var Class = genius.Resource.extend({ id: genius.types.number(), name: genius.types.string(), date: genius.types.date() });
+        var date = new Date(), dateStr = date.toISOString();
+        pattern = "/api/:id/:name";
+        data = new Class({ id: 11, name: "Jimmy", date: date });
+        expect(prov.createRoute(pattern, data)).toBe("/api/11/Jimmy?date=" + dateStr);
+    });
+});
+
+describe("Resource requests", function () {
+    var Zombie, backend;
+    beforeEach(function () {
+
+        genius.box.kernel.wipe(genius.box.modules.realDataModule);
+        genius.box.kernel.add(genius.box.modules.testDataModule);
+
+        backend = genius.box.HttpBackend();
+        Zombie = genius.Resource.extend({
+            url: "/api/zombies/:id",
+            uniqKey: "id",
+            name: genius.types.string(),
+            id: genius.types.number({ nullable: true, defaultTo: null }),
+            rand: genius.types.number(),
+            parseJs: function (response) {
+                return genius.config.types.custom.parseJs().call(this, response.zombie);
+            }
+        });
+    });
+
+    it("should call the resource's custom parse method", function () {
+        backend.expectGet("/api/zombies/4").toReturn("{\"success\": true, \"zombie\": {\"name\": \"Vladimir\", \"id\": 4, \"rand\": 3939}}");
+        var zombie = Zombie.$get({ id: 4 });
+        backend.flush();
+        expect(zombie.isNew()).toBe(false);
+        expect(zombie.name()).toBe("Vladimir");
+        expect(zombie.id()).toBe(4);
+        expect(zombie.rand()).toBe(3939);
+        //You can always modify genius.Resource.prototype.parse if you're feeling brave.
     });
 
 });
