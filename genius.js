@@ -22,6 +22,9 @@ var genius = {};
                     return str.charAt(0).toLowerCase() + str.substr(1);
                 }
             },
+            trim: function (str) {
+                return str.replace(/^\s+/, "").replace(/\s+$/, "");
+            },
             except: function (obj, exceptions) {
                 var output = {};
                 for (var x in obj) {
@@ -31,8 +34,7 @@ var genius = {};
                 return output;
             },
             random: function (min, max) {
-                var diff = max - min;
-                return (Math.random() * diff) + min;
+                return (Math.random() * (max - min)) + min;
             },
             map: function (array, callback) {
                 var copy = [];
@@ -76,8 +78,7 @@ var genius = {};
                 }
             },
             contains: function (haystack, needle) {
-                var index = genius.utils.indexOf(haystack, needle);
-                return index !== -1;
+                return genius.utils.indexOf(haystack, needle) !== -1;
             },
             indexOf: function (haystack, needle) {
                 if (Array.prototype.indexOf) {
@@ -109,6 +110,12 @@ var genius = {};
         var Config = function () {
             this.ajax = {
                 transformToCamelCase: genius.utils.accessor(false),
+                parseJson: genius.utils.accessor(function (response) {
+                    return genius.config.ajax.parseJs().call(this, JSON.parse(response));
+                }),
+                parseJs: genius.utils.accessor(function (response) {
+                    return response;
+                }),
                 reset: function () {
                     this.transformToCamelCase(false);
                 }
@@ -204,6 +211,7 @@ var genius = {};
         genius.box = new Box();
     }());
 
+    var markDirty = true, cleanDirties = false;
     //Types
     (function () {
         function TypeConfigSet() {
@@ -212,7 +220,17 @@ var genius = {};
             this.date = new TypeConfig(true,
                 function () { return new Date(); },
                 null,
-                null,
+                function (val) {
+                    if (val instanceof Date)
+                        return val;
+                    var regex = /^\d{4}\-\d{2}\-\d{2}T\d{2}\:\d{2}\:\d{2}\.\d{3}$/;
+                    if (typeof val == "string" && regex.test(val.replace(/^"/, "").replace(/$"/, ""))) {
+                        val = genius.utils.trim(val.replace(/[^\d]/g, " "));
+                        var split = genius.utils.map(val.split(/\s+/), parseInt);
+                        return new Date(split[0], split[1] - 1, split[2], split[3], split[4], split[5]);
+                    }
+                    return val;
+                },
                 function (val) { return val.toISOString(); });
             this.number = new TypeConfig(false, 0);
             this.dynamic = new TypeConfig(true, null);
@@ -311,7 +329,8 @@ var genius = {};
                     filter(arguments[0]);
                     value = arguments[0];
                     if (value !== current) {
-                        isDirty = true;
+                        if (markDirty)
+                            isDirty = true;
                         for (var x in changeCallbacks) {
                             changeCallbacks[x].call(this, value, current);
                         }
@@ -329,6 +348,9 @@ var genius = {};
                     delete changeCallbacks[id];
                 },
                 isDirty: function () {
+                    if (arguments.length && cleanDirties) {
+                        isDirty = arguments[0];
+                    }
                     return isDirty;
                 },
                 throwIt: function () {
@@ -444,7 +466,7 @@ var genius = {};
             this.getDefault = function () { return dflt };
         };
 
-        genius.types = function (type, options) { return { getInstance: function () { return new Class(new TypeOptions(options), type, "custom", true); } } };
+        genius.types = function (type, options) { return { getInstance: function () { return new Class(new TypeOptions(options), type, "custom", true); }, customType: type } };
 
         genius.utils.extend(genius.types, {
             bool: function (options) {
@@ -482,29 +504,72 @@ var genius = {};
 
     //Resource
     (function () {
+        var noInitialize = false;
         function initializeFlags(options) {
-            var isDirty = false,
-                isNew = true,
-                isLoading = false;
+            var isDirty = !noInitialize,
+                isNew = !noInitialize,
+                isLoading = noInitialize,
+                isDeleted = false;
             genius.utils.extend(this, {
                 isDirty: function () { return isDirty; },
                 isNew: function () { return isNew; },
                 isLoading: genius.utils.accessor(isLoading),
+                isDeleted: function () { return isDeleted; },
+                $delete: function () {
+                    function clearMe() {
+                        for (var x in this)
+                            if (this[x] && this[x].isAccessor)
+                                delete this[x];
+                    }
+                    if (isNew) {
+                        clearMe.call(this);
+                        isDeleted = true;
+                    } else {
+                        var url = genius.box.RouteProvider().createRoute(this.url(), this, false);
+                        var _self = this;
+                        this.isLoading(true);
+                        genius.box.HttpBackend()
+                            .delete(url)
+                            .done(function () { isDeleted = true; clearMe.call(_self); })
+                            .always(function () { this.isLoading(false); });
+                    }
+                    return null;
+                },
                 $save: function () {
-                    if (isDirty)
-                        genius.box.HttpBackend()[isNew ? "post" : "put"](this.url(), this.toJson())
-                            .done(function (response) { this.parse(response); })
-                            .done(function () { isLoading = false; });
+                    if (isDeleted)
+                        throw new ReferenceError("You cannot save a deleted resource.");
+                    if (isDirty) {
+                        var provider = genius.box.RouteProvider(),
+                            url = provider.createRoute(this.url(), this, false),
+                            _self = this;
+                        this.isLoading(true);
+                        genius.box.HttpBackend()[isNew ? "post" : "put"](url, this.toJson())
+                            .done(function (response) {
+                                response = genius.config.ajax.parseJson().call(this, response);
+                                markDirty = false;
+                                cleanDirties = true;
+                                for (var x in response) {
+                                    if (_self[x] && _self[x].isAccessor) {
+                                        _self[x](response[x]);
+                                        _self[x].isDirty(false);
+                                    }
+                                }
+                                markDirty = true;
+                                cleanDirties = true;
+                                isDirty = false;
+                            })
+                            .always(function () { _self.isLoading(false); });
+                    }
                 },
                 optionsHash: function () {
                     return options;
                 }
             });
-            return function (val) { isDirty = val; };
+            return function (val) { if (markDirty) isDirty = val; };
         };
         function setVarTyping(hash) {
             for (var x in hash) {
-                if (x !== "uniqKey")
+                if (x !== "uniqKey" && x !== "url")
                     this[x] = hash[x];
             }
         };
@@ -536,6 +601,7 @@ var genius = {};
             for (var x in this) {
                 if (typeof this[x].getInstance == "function") {
                     this[x] = this[x].getInstance().accessor();
+                    this[x].subscribe(function () { dirtyAccessor(true); });
                 }
                 if (typeof this[x].throwIt == "function") {
                     try {
@@ -580,6 +646,9 @@ var genius = {};
                         output[x] = output[x].toJs();
                 }
                 return output;
+            },
+            toJson: function () {
+                return JSON.stringify(this.toJs());
             }
         };
         function drillDown(str) {
@@ -593,7 +662,7 @@ var genius = {};
             return output;
         };
         Resource.extend = function (typeOptions) {
-            var noInitialize = false, dirtyAccessor;
+            var dirtyAccessor;
             if (typeOptions.uniqKey && (field = typeOptions[typeOptions.uniqKey])) {
                 if (!field.nullable())
                     throw new TypeError("Unique keys must be nullable");
@@ -617,6 +686,7 @@ var genius = {};
                 if (typeof typeOptions[x] == "function")
                     prototype[x] = typeOptions[x];
             }
+            prototype.url = myUrl;
 
             var Resource = function (options) {
                 if (!initializing) {
@@ -640,19 +710,37 @@ var genius = {};
 
             Resource.prototype = prototype;
             Resource.extend = arguments.callee;
+            Resource.$query = function (data) {
+                var Collection = genius.Collection.extend({ type: genius.types(Resource) });
+                var collection = new Collection();
+                var backend = genius.box.HttpBackend();
+                var url = genius.box.RouteProvider().createRoute(myUrl(), data);
+                var promise = backend.get(url)
+                    .done(function (response) {
+                        var parsed = genius.config.ajax.parseJson().call(this, response);
+                        collection.concat(parsed);
+                        collection.isLoading(false);
+                    });
+                return collection;
+            };
+
             Resource.$get = function (data) {
                 var backend = genius.box.HttpBackend();
                 var url = genius.box.RouteProvider().createRoute(myUrl(), data);
 
                 noInitialize = true;
                 var output = new this();
+                for (var x in data) {
+                    if (output[x].getInstance)
+                        output[x] = output[x].getInstance().initialize(data[x]).accessor();
+                }
                 noInitialize = false;
 
                 var dirtyPlaceholder = dirtyAccessor;
 
-                var deferred = backend.get(url)
+                var promise = backend.get(url)
                     .done(function (response) {
-                        var parsed = JSON.parse(response);
+                        var parsed = genius.config.ajax.parseJson().call(this, response);
                         if (typeOptions.parseJs)
                             parsed = typeOptions.parseJs(parsed);
                         populateTypedVars.call(output, parsed, dirtyPlaceholder);
@@ -660,7 +748,7 @@ var genius = {};
                     .done(function () {
                         output.isLoading(false);
                     });
-                output.$promise = deferred.promise();
+                output.$promise = promise;
                 return output;
             };
             return Resource;
@@ -729,13 +817,17 @@ var genius = {};
             }
 
             function Collection(options) {
-                if (!initializing && typeof this.init == "function") {
-                    this.init.apply(this, arguments);
+                if (!initializing) {
+                    options = options || {};
+                    if (typeof this.init == "function")
+                        this.init.apply(this, arguments);
 
                     if (options.type)
                         type = options.type;
                     if (options.unique)
                         unique = options.unique;
+                    this.isLoading = genius.utils.accessor(true);
+                    this.type = function () { return type; };
                 }
             };
             Collection.prototype = prototype;
@@ -822,41 +914,75 @@ var genius = {};
 
     //Fake Backend
     (function () {
-        function RequestExpectation(backend, url) {
+        function RequestExpectation(backend, action, url) {
             this.toReturn = function (data) {
-                backend.expectations[url] = data;
+                backend.expectations[action + "-" + url] = data;
             };
         };
         function FakeBackend() {
             this.expectations = {};
             this.pendingRequests = {};
         };
-        FakeBackend.prototype = {
+        FakeBackend.prototype = (function () {
+            function fakeRequest(action, url) {
+                if (!this.expectations[action + "-" + url])
+                    throw new ReferenceError("Unexpected request for " + url);
+                var def = genius.deferred();
+                this.pendingRequests[action + "-" + url] = def;
+                return def.promise();
+            }
+            return {
+                get: function (url) {
+                    return fakeRequest.call(this, "get", url);
+                },
+                put: function (url) {
+                    return fakeRequest.call(this, "put",  url);
+                },
+                post: function (url) {
+                    return fakeRequest.call(this, "post", url);
+                },
+                flush: function () {
+                    for (var x in this.pendingRequests) {
+                        this.pendingRequests[x].resolve(this.expectations[x]);
+                        delete this.pendingRequests[x];
+                    }
+                },
+                expectGet: function (url) {
+                    return new RequestExpectation(this, "get", url);
+                },
+                expectPost: function (url) {
+                    return new RequestExpectation(this, "post", url);
+                },
+                expectPut: function (url) {
+                    return new RequestExpectation(this, "put", url);
+                },
+                expectDelete: function (url) {
+                    return new RequestExpectation(this, "delete", url);
+                }
+            };
+        }());
+        genius.box.set("FakeHttpBackend", function () { return new FakeBackend(); }).singleton();
+    }());
+
+    //Real Backend
+    (function () {
+        function RealBackend() { };
+        RealBackend.prototype = {
             get: function (url) {
                 var def = genius.deferred();
-                this.pendingRequests[url] = def;
-                return def;
-            },
-            flush: function () {
-                for (var x in this.pendingRequests) {
-                    this.pendingRequests[x].resolve(this.expectations[x]);
-                    delete this.pendingRequests[x];
-                }
-            },
-            expectGet: function (url) {
-                return new RequestExpectation(this, url);
-            },
-            expectPost: function (url) {
-                return new RequestExpectation(this, url);
-            },
-            expectPut: function (url) {
-                return new RequestExpectation(this, url);
-            },
-            expectDelete: function (url) {
-                return new RequestExpectation(this, url);
+                var xhr = genius.box.XHR();
+                xhr.open("GET", url, true);
+                xhr.setRequestHeader("Accepts", "application/json");
+                xhr.onreadystatechange = function () {
+                    if (xhr.readyState == 4 && xhr.status == 200) {
+                        def.resolve(xhr.responseText);
+                    }
+                };
+                xhr.send();
+                return def.promise();
             }
         };
-        genius.box.set("FakeHttpBackend", function () { return new FakeBackend(); }).singleton();
+        genius.box.set("RealHttpBackend", function () { return new RealBackend(); });
     }());
 
     //AsyncQueue
@@ -889,30 +1015,48 @@ var genius = {};
         };
         function RouteProvider() { };
         RouteProvider.prototype = {
-            createRoute: function (pattern, data) {
+            createRoute: function (pattern, data, addQuery) {
                 var regex = /\:([^\/\.\-]+)/gi;
                 var match, output = pattern, alreadyMatched = [];
                 while (match = regex.exec(pattern)) { 
                     var capture = match[1], replacement;
                     if (data[capture])
-                        replacement = data[capture].isAccessor ? data[capture]() : (typeof data[capture] !== "function" ? data[capture] : "");
+                        replacement = data[capture].isAccessor && data[capture]() ? data[capture]() : (typeof data[capture] !== "function" ? data[capture] : "");
                     else
                         replacement = "";
                     output = output.replace(match[0], replacement);
                     alreadyMatched.push(match[1]);
                 }
-                return output + param(genius.utils.except(data instanceof genius.Resource ? data.properties() : data, alreadyMatched));
+                if (/\/$/.test(output))
+                    output = output.substr(0, output.length - 1);
+                if (addQuery !== false)
+                    output += param(genius.utils.except(data instanceof genius.Resource ? data.properties() : data, alreadyMatched));
+                return output;
             }
         };
         genius.box.set("RouteProvider", function () { return new RouteProvider(); }).singleton();
     }());
 
+    //XHR Object
+    (function () {
+        if (window.XMLHttpRequest) {
+            genius.box.set("XHR", function () { return new XMLHttpRequest(); });
+        } else if (window.ActiveXObject) {
+            genius.box.set("XHR", function () { return new ActiveXObject("Microsoft.XMLHTTP"); });
+        }
+
+    }());
+
     //Setup
     (function () {
-        genius.box.modules.register("realDataModule", {});
+        genius.box.modules.register("realDataModule", {
+            HttpBackend: genius.box.kernel.dependency(genius.box.RealHttpBackend)
+        });
         genius.box.modules.register("testDataModule", {
             HttpBackend: genius.box.kernel.dependency(genius.box.FakeHttpBackend)
         });
+        genius.box.kernel.add(genius.box.modules.realDataModule);
+        genius.config.types.date.parseInit();
     }());
 
 }());
