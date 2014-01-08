@@ -65,7 +65,6 @@ describe("Plain classes", function () {
 
         expect(myTestClass2.plain().propertyNotInDef()).toBe("Test property - not in definition");
     });
-
 });
 
 describe("Dynamics", function () {
@@ -200,7 +199,6 @@ describe("The genius box", function () {
 });
 
 describe("Type specifications", function () {
-
     it("should initialize boolean types to booleans", function () {
         var Class = genius.Resource.extend({
             bool: genius.types.bool(),
@@ -215,6 +213,31 @@ describe("Type specifications", function () {
         expect(function () { myClass.nullable(undefined); }).not.toThrow();
     });
 
+    it("should initialize typed arrays to collections", function () {
+        var Brain = genius.Resource.extend({
+            weight: genius.types.number(),
+            color: genius.types.string(),
+            formerOwner: genius.types.string()
+        });
+        var Zombie = genius.Resource.extend({
+            brains: genius.types.collection(genius.types(Brain))
+        });
+        var zombo = new Zombie({
+            brains: [
+                {
+                    weight: 10,
+                    color: "gray",
+                    formerOwner: "Jimmy"
+                }
+            ]
+        });
+        var brains = zombo.brains(), brain = brains[0];
+        expect(brains).toEqual(jasmine.any(genius.Collection));
+        expect(brain).toEqual(jasmine.any(Brain));
+        expect(brain.weight()).toBe(10);
+        expect(brain.color()).toBe("gray");
+        expect(brain.formerOwner()).toBe("Jimmy");
+    });
 
     it("should set options on custom class types", function () {
         var Class = genius.Resource.extend({
@@ -235,7 +258,6 @@ describe("Type specifications", function () {
     //    expect(myClass.prop("Another string")).toBe(myClass);
     //    expect(myClass.prop()).toBe("Another string");
     //});
-
 
     it("should initialize number types to numbers", function () {
         var Class = genius.Resource.extend({
@@ -378,7 +400,6 @@ describe("Type specifications", function () {
             });
         }).toThrow();
     });
-
 });
 
 describe("Observables", function () {
@@ -815,6 +836,18 @@ describe("A collection", function () {
             name: genius.types.string({ defaultTo: "Cameron" })
         });
     });
+    it("should splice out deleted items on deletion", function () {
+        var Collection = genius.Collection.extend({ type: genius.types(Class) });
+        var myClass = new Class({id: 1, name: "Jammer"});
+        var collection = new Collection();
+        collection.push(myClass);
+        expect(collection.length).toBe(1);
+        expect(collection[0]).toBe(myClass);
+        myClass.$delete();
+        expect(collection.length).toBe(0);
+        expect(genius.utils.contains(collection, myClass)).toBe(false);
+    });
+
     it("should allow direct instantiation", function () {
         var collection = new genius.Collection({ type: genius.types(Class) });
         collection.concat([{}, { name: "Sara" }, { name: "Jimmy" }]);
@@ -823,6 +856,7 @@ describe("A collection", function () {
         expect(collection[1].name()).toBe("Sara");
         expect(collection[2].name()).toBe("Jimmy");
     });
+
     it("should allow uniqueness configuration", function () {
         var collection = new genius.Collection({ type: genius.types(Class), unique: true });
         collection.concat([{ id: 1, name: "Jimbo" }, { id: 2, name: "Sally" }]);
@@ -831,6 +865,7 @@ describe("A collection", function () {
         expect(collection.length).toBe(2);
         expect(collection[0].name()).toBe("Bobo");
     });
+
     it("should allow class inheritance", function () {
         var Collection = genius.Collection.extend({ type: genius.types(Class), unique: false });
         var collection = new Collection();
@@ -878,6 +913,35 @@ describe("Resource requests", function () {
         backend = genius.box.HttpBackend();
     });
 
+    it("should handle custom types on return from $save", function () {
+        var Toy = genius.Resource.extend({
+            name: genius.types.string(),
+            verb: genius.types.string(),
+            weight: genius.types.number()
+        });
+        Zombie = genius.Resource.extend({
+            url: "/api/zombies/:id",
+            uniqKey: "id",
+            name: genius.types.string(),
+            id: genius.types.number({ nullable: true, defaultTo: null }),
+            rand: genius.types.number(),
+            parseJs: function (response) {
+                return genius.config.types.custom.parseJs().call(this, response.zombie);
+            },
+            favoriteToy: genius.types(Toy)
+        });
+        backend.expectGet("/api/zombies/4").toReturn("{\"success\": true, \"zombie\": {\"name\": \"Vladimir\", \"id\": 4, \"rand\": 3939,\"favoriteToy\":{\"name\":\"hacksaw\",\"verb\":\"hack\",\"weight\":15}}}");
+        backend.expectPut("/api/zombies/4").toReturn("{\"success\": true, \"zombie\": {\"name\": \"Horowitz\", \"id\": 4, \"rand\": 3939,\"favoriteToy\":{\"name\":\"hacksaw\",\"verb\":\"hack\",\"weight\":15}}}");
+        var zombie = Zombie.$get({ id: 4 });
+        backend.flush();
+        expect(zombie.favoriteToy()).toEqual(jasmine.any(Toy));
+
+        zombie.name("Horowitz");
+        zombie.$save();
+        expect(zombie.favoriteToy()).toEqual(jasmine.any(Toy));
+        expect(zombie.name()).toBe("Horowitz");
+    });
+
     it("should call the resource's custom parse method", function () {
         Zombie = genius.Resource.extend({
             url: "/api/zombies/:id",
@@ -917,11 +981,15 @@ describe("Resource requests", function () {
         expect(zombies.isLoading()).toBe(true);
         expect(zombies.length).toBe(0);
         backend.flush();
+        for (var i = 0; i < zombies.length; i++) {
+            expect(zombies[i].isNew()).toBe(false);
+        }
         expect(zombies.length).toBe(2);
         for (var i = 0; i < zombies.length; i++) {
             expect(zombies[i]).toEqual(jasmine.any(Zombie));
         }
-        expect(zombies.isLoading()).toBe(false)
+        expect(zombies.isLoading()).toBe(false);
+        console.log("zombie name", zombies[0].name);
         expect(zombies[0].name()).toBe("Muncher");
         expect(zombies[1].name()).toBe("Munchkin");
     });
@@ -932,15 +1000,17 @@ describe("Resource requests", function () {
             uniqKey: "id",
             name: genius.types.string(),
             id: genius.types.number({ nullable: true, defaultTo: null }),
-            rand: genius.types.number()
+            rand: genius.types.number(),
+            birthday: genius.types.date()
         });
         backend.expectGet("/api/zombies/3").toReturn("{\"name\": \"Malvolio\", \"id\": 3, \"rand\": 5757}");
-        backend.expectPut("/api/zombies/3").toReturn("{\"name\": \"Mercutio\", \"id\": 3, \"rand\": 4598}");
+        backend.expectPut("/api/zombies/3").toReturn("{\"name\": \"Mercutio\", \"id\": 3, \"rand\": 4598, \"birthday\": \"1992-04-17T12:00:00.000Z\"}");
         var zombie = Zombie.$get({ id: 3 });
         expect(zombie.isLoading()).toBe(true);
         expect(zombie.id()).toBe(3);
         backend.flush();
 
+        expect(zombie.isNew()).toBe(false);
         expect(zombie.isLoading()).toBe(false);
         expect(zombie.name()).toBe("Malvolio");
         expect(zombie.rand()).toBe(5757);
@@ -950,6 +1020,11 @@ describe("Resource requests", function () {
         zombie.$save();
         expect(zombie.isLoading()).toBe(true);
         backend.flush();
+
+        var birthday = zombie.birthday();
+        expect(birthday.getFullYear()).toBe(1992);
+        expect(birthday.getMonth()).toBe(3);
+        expect(birthday.getDate()).toBe(17);
 
         expect(zombie.name()).toBe("Mercutio");
         expect(zombie.rand()).toBe(4598);
@@ -1003,7 +1078,9 @@ describe("Resource requests", function () {
         });
         backend.expectGet("/api/zombies/5").toReturn("{\"success\": true, \"errors\": [], \"data\": {\"name\": \"Jeanne\", \"id\": 5, \"rand\": 4801}}");
         var zombie = Zombie.$get({ id: 5 });
+        expect(zombie.isNew()).toBe(false);
         backend.flush();
+        expect(zombie.isNew()).toBe(false);
         expect(zombie.name()).toBe("Jeanne");
         expect(zombie.rand()).toBe(4801);
         expect(zombie.errors).toBeUndefined();
@@ -1011,6 +1088,4 @@ describe("Resource requests", function () {
         genius.config.reset();
         expect(genius.config.ajax.parse).toBeUndefined();
     });
-
-
 });
