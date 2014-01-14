@@ -1,4 +1,4 @@
-/*
+﻿/*
 Genius JavaScript Library v0.0.1
 (c) Cameron Edwards - http://www.geniusjs.com
 License: GNU 3.0 (http://opensource.org/licenses/GPL-3.0)
@@ -9,6 +9,14 @@ var genius = {};
     //Utils
     (function () {
         genius.utils = {
+            cascadingGet: function (propName, sources) {
+                for (var i = 0; i < sources.length; i++) {
+                    if (sources[i] && sources[i].hasOwnProperty(propName)) {
+                        var output = sources[i][propName];
+                        return (!genius.utils.isNullOrUndefined(output) && output.isAccessor) ? output() : output;
+                    }
+                }
+            },
             cases: {
                 camelObject: function (obj) {
                     var copy = {};
@@ -59,7 +67,7 @@ var genius = {};
                 }
                 console.log(output.toString());
             },
-            partial: function(callback){
+            partial: function (callback) {
                 return function () {
                     return callback.apply(this, genius.utils.toArray(arguments).slice(1));
                 };
@@ -72,16 +80,19 @@ var genius = {};
                 return arr;
             },
             accessor: function (value) {
-                return function () {
+                var output = function () {
                     if (arguments.length)
                         value = arguments[0];
                     return value;
                 };
+                output.isAccessor = true;
+                return output;
             },
             extend: function (obj1, obj2) {
                 for (var x in obj2) {
                     obj1[x] = obj2[x];
                 }
+                return obj1;
             },
             contains: function (haystack, needle) {
                 return genius.utils.indexOf(haystack, needle) !== -1;
@@ -113,7 +124,7 @@ var genius = {};
 
     //Config
     (function () {
-        var Config = function () {
+        function Config() {
             this.ajax = {
                 transformToCamelCase: genius.utils.accessor(false),
                 parseJson: genius.utils.accessor(function (response) {
@@ -124,6 +135,12 @@ var genius = {};
                 }),
                 reset: function () {
                     this.transformToCamelCase(false);
+                    this.parseJson(function (response) {
+                        return genius.config.ajax.parseJs().call(this, JSON.parse(response));
+                    });
+                    this.parseJs(function (response) {
+                        return response;
+                    });
                 }
             };
         };
@@ -211,64 +228,87 @@ var genius = {};
             };
             this.reset = function () {
                 this.wipe();
-//                Box.call(box);
+                //                Box.call(box);
             };
         };
         genius.box = new Box();
     }());
 
-    var markDirty = true, cleanDirties = false;
+    var client = {
+        parse: function (value, options) { return value; },
+        set: function (value, options) {
+            options.value = value;
+            options.isDirty = options.current !== options.value;
+            return options.value;
+        }
+    },
+    server = {
+        parse: function (value, options) {
+            return options.parseServerInput.call(this, value, options.constr);
+        },
+        set: function (value, options) {
+            options.value = value;
+            options.isDirty = false;
+            return options.value;
+        }
+    };
+
+    var setUtils = client;
+
     //Types
     (function () {
         function TypeConfigSet() {
-            this.bool = new TypeConfig(false, false);
+            this.boolean = new TypeConfig(false, false);
             this.string = new TypeConfig(false, "");
-            function dateParseJs(val) {
-                if (val instanceof Date)
+            this.date = new TypeConfig(true, function () { return new Date(); }, {
+                parseServerInput: function (val) {
+                    var regex = /^\d{4}\-\d{2}\-\d{2}T\d{2}\:\d{2}\:\d{2}\.\d{3}Z$/;
+                    if (typeof val == "string" && regex.test(val)) {
+                        val = genius.utils.trim(val.replace(/[^\d]/g, " "));
+                        var split = genius.utils.map(val.split(/\s+/), parseInt);
+                        return new Date(split[0], split[1] - 1, split[2], split[3], split[4], split[5]);
+                    }
                     return val;
-                var regex = /^\d{4}\-\d{2}\-\d{2}T\d{2}\:\d{2}\:\d{2}\.\d{3}Z$/;
-                if (typeof val == "string" && regex.test(val.replace(/^"/, "").replace(/$"/, ""))) {
-                    val = genius.utils.trim(val.replace(/[^\d]/g, " "));
-                    var split = genius.utils.map(val.split(/\s+/), parseInt);
-                    return new Date(split[0], split[1] - 1, split[2], split[3], split[4], split[5]);
+                },
+                toQuery: function (val) {
+                    return val.toISOString();
                 }
-                return val;
-            }
-            this.date = new TypeConfig(true,
-                function () { return new Date(); },
-                dateParseJs,
-                dateParseJs,
-                function (val) { return val.toISOString(); });
+            });
+            this.collection = new TypeConfig(false, function () { return new genius.Collection(); });
             this.number = new TypeConfig(false, 0);
             this.dynamic = new TypeConfig(true, null);
-            this.custom = new TypeConfig(true, null, function (val, type) {
-                return val;
-                //if (val instanceof type)
-                //    return val;
-                //else
-                //    return new type(val);
-            }, function (val, type) {
-                if (val instanceof type)
-                    return val;
-                var output = new type(val);
-                for (var x in val)
-                    if (!output[x])
-                        output[x] = genius.types.dynamic().getInstance().initialize(val[x]).accessor();
-                return output;
+            this.custom = new TypeConfig(true, null, {
+                parseServerInput: function (val, type) {
+                    var output = new type();
+                    for (var x in val) {
+                        if (output[x]) {
+                            if (output[x].isAccessor) {
+                                output[x](val[x]);
+                            } else if (typeof output[x] !== "function") {
+                                output[x] = val[x];
+                            }
+                        } else {
+                            output[x] = genius
+                                .types
+                                .dynamic()
+                                .getInstance()
+                                .initialize(val[x])
+                                .accessor();
+                        }
+                    }
+                    return output;
+                }
             });
         };
         TypeConfigSet.permanentProperties = ["bool", "string", "date", "number", "dynamic", "custom", "add", "reset"];
+
         TypeConfigSet.prototype = {
-            add: function (name, type, options) {
+            add: function (name, constr, options) {
                 options = options || {};
                 var camellized = genius.utils.cases.pascalToCamel(name);
-                var config = this[camellized] = new TypeConfig(true, null, options.parseJs);
+                var config = this[camellized] = new TypeConfig(true, null, options);
                 genius.types[camellized] = function () {
-                    return {
-                        getInstance: function (options) {
-                            return new Class(new TypeOptions(options), type, "custom", true);
-                        }
-                    }
+                    return new PlatonicType(options, constr, camellized, throwItClass);
                 };
             },
             reset: function (options) {
@@ -283,404 +323,340 @@ var genius = {};
             }
         };
 
-        var parseDefault = function (val) { return val; };
-        function TypeConfig(nullable, defaultTo, parseJs, parseInit, toQuery) {
+        var parseDefault = function (val) { return val; },
+            toDefault = function (val) { return val; };
+        function TypeConfig(nullable, defaultTo, options) {
+            options = options || {};
             this.nullable = genius.utils.accessor(nullable);
             this.defaultTo = genius.utils.accessor(defaultTo);
-            this.parseJs = genius.utils.accessor(parseJs || parseDefault);
-            this.parseInit = genius.utils.accessor(parseInit || parseDefault);
-            this.toQuery = genius.utils.accessor(toQuery || parseDefault);
-            var myParse = this.parseJs();
-            this.parseJson = genius.utils.accessor();
-            var orig = [this.nullable(), this.defaultTo(), this.parseJs(), this.parseJson(), this.parseInit()];
+            this.parseServerInput = genius.utils.accessor(options.parseServerInput || parseDefault);
+            this.toQuery = genius.utils.accessor(options.toQuery || toDefault);
+            this.toJs = genius.utils.accessor(options.toJs || toDefault);
+            this.toJson = genius.utils.accessor(options.toJson || toDefault);
+
+            var orig = [this.nullable(), this.defaultTo(), this.parseServerInput(), this.toQuery(), this.toJs(), this.toJson()];
             this.reset = function () {
                 this.nullable(orig[0]);
                 this.defaultTo(orig[1]);
-                this.parseJs(orig[2]);
-                this.parseJson(orig[3]);
-                this.parseInit(orig[4]);
+                this.parseServerInput(orig[2]);
+                this.toQuery(orig[3]);
+                this.toJs(orig[4]);
+                this.toJson(orig[5]);
             };
         };
 
         genius.config.types = new TypeConfigSet();
 
-        function TypeOptions(options) {
+        function TypeOptions(options, constr, typeName, filter) {
             options = options || {};
-            this.defaultSpecified = options.hasOwnProperty("defaultTo");
-            this.nullableSpecified = options.hasOwnProperty("nullable");
-            this.defaultTo = typeof options.defaultTo == "function" ? options.defaultTo : function () { return options.defaultTo } || function () { };
-            this.toQuery = options.toQuery;
+            typeName = typeName || "custom";
+            var config = genius.config.types[typeName];
 
-            this.nullable = !(!options.nullable);
-            this.parseInit = options.parseInit;
-            this.parseJs = options.parseJs;
-        };
-        function getDefault(str, options) {
-            if (options.defaultSpecified)
-                return options.defaultTo();
-            var def = genius.config.types[str].defaultTo();
-            return typeof def == "function" ? def() : def;
-        };
-        function throwItType(value, desiredTypeString, nullable) {
-            if (typeof value == desiredTypeString) return;
-            if (nullable && genius.utils.isNullOrUndefined(value)) return;
-            throw new TypeError("Value must be of type " + desiredTypeString + (nullable ? ", null, or undefined" : ""));
-        };
-        function throwItClass(value, constructor, nullable) {
-            if (value instanceof constructor) return;
-            if (nullable && genius.utils.isNullOrUndefined(value)) return;
-            throw new TypeError("Value must be of custom type " + constructor.name + (nullable ? ", null, or undefined" : ""));
-        }
+            this.nullable = genius.utils.cascadingGet("nullable", [options, config]);
+            if (typeof this.nullable == "undefined")
+                this.nullable = true;
 
-        function setFromServer(value, current, filter, parse, changeCallbacks) {
-            //parsing modes need to be different. parseSet vs parseFromServer, perhaps?
-            value = parse(value);
-            filter(value);
-            if (value !== current) {
-                for (var x in changeCallbacks) {
-                    changeCallbacks[x].call(this, value, current);
-                }
-            }
-            return value;
-        };
-        function setFromClient(value, current, filter, parse) {
-            value = parse(value);
-            filter();
-        };
-        var set = setFromClient;
+            var defaultTo = genius.utils.cascadingGet("defaultTo", [options, config]);
+            this.defaultTo = typeof defaultTo == "function" ? defaultTo : function () { return defaultTo; };
 
-        function accessor(value, filter, parse, toQuery) {
-            var isDirty = false, current = value, changeCallbacks = {};
+            this.parseServerInput = genius.utils.cascadingGet("parseServerInput", [options, config]);
+
+            this.typeName = typeName;
+            this.constr = constr;
+            this.toQuery = options.toQuery || config.toQuery;
+            this.initialize = options.initialize || function () { return parseDefault; };
+            this.filter = filter;
+            this.value = this.defaultTo;
+        };
+
+        function PlatonicType(options, constr, typeName, filter) {
+            options = new TypeOptions(options, constr, typeName, filter);
+            options.filter(options.defaultTo(), options, true);
+            this.getInstance = function () {
+                return new PlatonicInstance(genius.utils.extend({}, options));
+            };
+            this.nullable = function () { return options.nullable; };
+            this.getDefault = options.defaultTo;
+            this.constr = function () { return options.constr };
+        };
+
+        function accessor(options) {
+            options.filter(options.value, options);
+            options.isDirty = false;
+            options.current = options.value;
+            options.changeCallbacks = {};
             var output = function () {
                 if (arguments.length) {
-                    arguments[0] = parse(arguments[0]);
-                    filter(arguments[0]);
-                    value = arguments[0];
-                    if (value !== current) {
-                        if (markDirty)
-                            isDirty = true;
-                        for (var x in changeCallbacks) {
-                            changeCallbacks[x].call(this, value, current);
-                        }
+                    arguments[0] = setUtils.parse(arguments[0], options);
+                    options.filter(arguments[0], options);
+                    setUtils.set(arguments[0], options);
+                    if (options.current !== options.value) {
+                        for (var x in options.changeCallbacks)
+                            options.changeCallbacks[x].call(this, options.current, options.value);
+                        options.current = options.value;
                     }
                 }
-                return value;
+                return options.value;
             };
+
             var index = 0;
             genius.utils.extend(output, {
                 subscribe: function (callback) {
-                    changeCallbacks[index] = callback;
+                    options.changeCallbacks[index] = callback;
                     return index++;
                 },
                 unsubscribe: function (id) {
-                    delete changeCallbacks[id];
-                },
-                isDirty: function () {
-                    if (arguments.length && cleanDirties) {
-                        isDirty = arguments[0];
-                    }
-                    return isDirty;
-                },
-                throwIt: function () {
-                    filter(value);
+                    delete options.changeCallbacks[id];
                 },
                 toQuery: function () {
-                    return toQuery.call(this, value);
-                }
+                    return options.toQuery().call(this, options.value);
+                },
+                isAccessor: true,
+                nullable: function () {
+                    return options.nullable;
+                },
+                defaultTo: options.defaultTo,
+                isDirty: function () { return options.isDirty; }
             });
-            output.isAccessor = true;
             return output;
         };
 
-        function Type(options, geniusTypeName, typeName) {
-            var nullable = options.nullableSpecified ? options.nullable : genius.config.types[geniusTypeName].nullable();
-            var dflt = getDefault(geniusTypeName, options);
-            this.default = function () { return dflt; };
-            this.nullable = function () { return nullable; };
-            throwItType(dflt, typeName, true);
-            function parseJs(val) {
-                if (options.parseJs)
-                    return options.parseJs.call(window, val);
-                return genius.config.types[geniusTypeName].parseJs().call(window, val);
-            };
-            var initParser = genius.utils.once(function () {
-                return options.parseInit ? options.parseInit : genius.config.types[geniusTypeName].parseInit();
-            });
+        function PlatonicInstance(options) {
             var _self = this;
-            this.initialize = genius.utils.once(function (val) {
-                var placeholder = initParser().call(window, val);
-                throwItType(placeholder, typeName, nullable);
-                dflt = placeholder;
+            options.value = options.defaultTo();
+            this.accessor = genius.utils.once(function () {
+                return accessor(options);
+            });
+            this.initialize = genius.utils.once(function (value) {
+                value = setUtils.parse(value, options);
+                options.filter(value, options);
+                options.value = options.current = value;
                 return _self;
             });
-            this.accessor = genius.utils.once(function () {
-                return accessor(dflt,
-                    function (val) { throwItType(val, typeName, nullable); },
-                    parseJs, options.toQuery || genius.config.types[geniusTypeName].toQuery());
-            });
         };
 
-        function Class(options, type, geniusTypeName, custom) {
-            var nullable = options.nullableSpecified ? options.nullable : genius.config.types[geniusTypeName].nullable();
-            var dflt = getDefault(geniusTypeName, options);
-            this.default = function () { return dflt; };
-            this.nullable = function () { return nullable; };
-            throwItClass(dflt, type, true);
-            var initParser = genius.utils.once(function () {
-                return options.parseInit ? options.parseInit : genius.config.types[geniusTypeName].parseInit();
-            });
-            var parseJs = function (val) {
-                if (options.parseJs)
-                    return options.parseJs.call(window, val, type);
-                if (val instanceof type)
-                    return val;
-                else if (config = genius.config.types[geniusTypeName])
-                    return config.parseJs().call(window, val, type);
-                else
-                    return new type(val);
-            };
-            var throwIt = function (val) { throwItClass(val, type, nullable); };
-            var _self = this;
-            this.initialize = genius.utils.once(function (val) {
-                var placeholder = initParser().call(window, val, type);
-                throwIt(placeholder);
-                dflt = placeholder;
-                return _self;
-            });
-            this.accessor = genius.utils.once(function () {
-                var output = accessor(dflt, throwIt, parseJs, options.toQuery || genius.config.types[geniusTypeName].toQuery());
-                if (custom)
-                    output.customType = type;
-                return output;
-            });
+        function throwItType(value, options, nullable) {
+            if (typeof value == options.typeName) return;
+            if ((options.nullable || nullable) && genius.utils.isNullOrUndefined(value)) return;
+            throw new TypeError("Value must be of type " + options.typeName + (options.nullable ? ", null, or undefined" : ""));
+        };
+        function throwItClass(value, options, nullable) {
+            if (value instanceof options.constr) return;
+            if ((options.nullable || nullable) && genius.utils.isNullOrUndefined(value)) return;
+            throw new TypeError("Value must be of custom type " + options.constr.name + (options.nullable ? ", null, or undefined" : ""));
+        };
+        function throwItNull(value, options, nullable) {
+            if (nullable)
+                return;
+            if (!options.nullable && genius.utils.isNullOrUndefined(value))
+                throw new TypeError("Dynamic value cannot be null or undefined");
         };
 
-        function DynamicType(options) {
-            var nullable = options.nullableSpecified ? options.nullable : genius.config.types.dynamic.nullable();
-            var dflt = getDefault("dynamic", options);
-            this.default = function () { return dflt; };
-            this.nullable = function () { return nullable; };
-            var initParser = genius.utils.once(function () {
-                return options.parseInit ? options.parseInit : genius.config.types.dynamic.parseInit();
-            });
-            function parseJs(val) {
-                return options.parseJs ? options.parseJs.call(window, val) : genius.config.types.dynamic.parseJs().call(window, val);
-            };
-            var _self = this;
-            this.initialize = genius.utils.once(function (val) {
-                var placeholder = initParser().call(this, val);
-                throwItNull(placeholder);
-                dflt = placeholder;
-                return _self;
-            });
-            function throwItNull(val) {
-                if (!nullable && genius.utils.isNullOrUndefined(val))
-                    throw new TypeError("Dynamic value cannot be null or undefined");
-            };
-            this.accessor = genius.utils.once(function () {
-                return accessor(dflt, throwItNull, parseJs, options.toQuery || genius.config.types.dynamic.toQuery());
-            });
+        genius.types = function (constr, options) {
+            return new PlatonicType(options, constr, "custom", throwItClass);
         };
-
-        function PlatonicType(options, typeName, geniusTypeName) {
-            options = new TypeOptions(options);
-            var nullable = options.nullableSpecified ? options.nullable : genius.config.types.bool.nullable();
-            var dflt = getDefault(geniusTypeName, options);
-            throwItType(dflt, typeName, true);
-            this.getInstance = function () {
-                return new Type(options, geniusTypeName, typeName);
-            };
-            this.nullable = function () { return nullable; };
-            this.getDefault = function () { return dflt };
-        };
-
-        genius.types = function (type, options) { return { getInstance: function () { return new Class(new TypeOptions(options), type, "custom", true); }, customType: type } };
 
         genius.utils.extend(genius.types, {
-            collection: function (type) {
-                var Collection = genius.Collection.extend({ type: type });
-                return {
-                    getInstance: function () {
-                        return new Collection();
-                    }
-                };
-            },
-            bool: function (options) {
-                return new PlatonicType(options, "boolean", "bool");
-            },
             string: function (options) {
-                return new PlatonicType(options, "string", "string");
+                return new PlatonicType(options, String, "string", throwItType);
+            },
+            boolean: function (options) {
+                return new PlatonicType(options, Boolean, "boolean", throwItType);
             },
             number: function (options) {
-                return new PlatonicType(options, "number", "number");
-            },
-            dynamic: function (options) {
-                options = new TypeOptions(options);
-                var nullable = options.nullableSpecified ? options.nullable : genius.config.types.bool.nullable();
-                var dflt = getDefault("dynamic", options);
-                return {
-                    getInstance: function () { return new DynamicType(options); },
-                    nullable: function () { return nullable; },
-                    getDefault: function () { return dflt; }
-                };
+                return new PlatonicType(options, Number, "number", throwItType);
             },
             date: function (options) {
-                options = new TypeOptions(options);
-                var nullable = options.nullableSpecified ? options.nullable : genius.config.types.date.nullable();
-                var dflt = getDefault("date", options);
-                throwItClass(dflt, Date, true);
-                return {
-                    getInstance: function () { return new Class(options, Date, "date"); },
-                    nullable: function () { return nullable; },
-                    getDefault: function () { return dflt; }
-                };
+                return new PlatonicType(options, Date, "date", throwItClass);
+            },
+            collection: function (options) {
+                return new PlatonicType(options, genius.Collection, "collection", throwItClass);
+            },
+            dynamic: function (options) {
+                return new PlatonicType(options, function () {}, "dynamic", throwItNull);
             }
         });
     }());
 
     //Resource
     (function () {
-        var noInitialize = false, globalIsNew = true;
-        function initializeFlags(options) {
-            var callbacks = { none: {} };
-            var isDirty = !noInitialize,
-                isNew = globalIsNew,
-                isLoading = noInitialize,
-                isDeleted = false,
-                callbackIndex = 0;
-            function fire(event) {
-                var set;
-                if (set = callbacks[event]) {
-                    for (var x in set) {
-                        set[x].apply(this, genius.utils.toArray(arguments).slice(1));
+        var resourceUtils = {
+            getKey: function (options, typeOptions) {
+                options = options || {};
+                if (typeOptions.uniqKey) {
+                    var key = resourceUtils.drillDown.call(this, options, typeOptions.uniqKey);
+                    return key;
+                }
+            },
+            getUrl: function () { },
+            buildPrototype: function (prototype, typeOptions) {
+                for (var x in typeOptions) {
+                    if (typeof typeOptions[x] == "function") {
+                        prototype[x] = typeOptions[x];
                     }
                 }
-            }
-            genius.utils.extend(this, {
-                subscribe: function (event, callback) {
-                    event = typeof event == "string" ? event : "change";
-                    callback = typeof event == "string" ? callback : event;
-                    if (!callbacks[event]) callbacks[event] = {};
-                    callbacks[event][callbackIndex++] = callback;
-                },
-                unsubscribe: function (callbackId) {
-                    var output = false;
-                    for (var x in callbacks) {
-                        if (callbacks[x][callbackId]) {
-                            output = true;
-                            delete callbacks[x][callbackId];
-                            break;
+                prototype.url = typeof typeOptions.url == "function" ?
+                    typeOptions.url :
+                    function () { return typeOptions.url || ""; };
+            },
+            setVarTyping: function (hash) {
+                for (var x in hash) {
+                    if (x !== "uniqKey" && x !== "url")
+                        this[x] = hash[x];
+                }
+            },
+            populateVar: function (x, value, innerConfig) {
+                var toCamel = genius.config.ajax.transformToCamelCase();
+                if (toCamel) {
+                    if (genius.utils.cases.isCapitalized(x)) {
+                        var camellized = genius.utils.cases.pascalToCamel(x);
+                        resourceUtils.populateVar.call(this, camellized, value);
+                        if (this[x])
+                            this[x] = this[camellized];
+                        return;
+                    }
+                    if (typeof value == "object")
+                        value = genius.utils.cases.camelObject(value);
+                }
+                if (this[x] && this[x].getInstance) {
+                    this[x] = this[x].getInstance().initialize(value).accessor();
+                    this[x].subscribe(function () { innerConfig.isDirty = true; });
+                } else if (typeof value == "function") {
+                    this[x] = value;
+                } else if (this[x] && this[x].isAccessor) {
+                    this[x](value);
+                } else {
+                    this[x] = genius.types.dynamic({ nullable: true }).getInstance().initialize(value).accessor();
+                }
+
+            },
+            populateVars: function (options, innerConfig) {
+                for (var x in options) {
+                    resourceUtils.populateVar.call(this, x, options[x], innerConfig);
+                }
+                for (var x in this) {
+                    if (typeof this[x].getInstance == "function") {
+                        this[x] = this[x].getInstance().accessor();
+                        this[x].subscribe(function () { innerConfig.isDirty = true; });
+                    }
+                }
+            },
+            drillDown: function (obj, str) {
+                var split = str.split(".");
+                var output = obj[split[0]];
+                for (var i = 1; i < split.length; i++) {
+                    if (!output[split[i]])
+                        return;
+                    output = output[split[i]].isAccessor ? output[split[i]]() : output[split[i]];
+                }
+                return output;
+            },
+            getInnerConfig: function (innerConfig, options) {
+                if (innerConfig) {
+                    innerConfig.optionsHash = options;
+                    return innerConfig;
+                } else {
+                    return {
+                        isDirty: true,
+                        isNew: true,
+                        isLoading: false,
+                        isDeleted: false,
+                        optionsHash: options
+                    };
+                }
+            },
+            initialize: function (innerConfig, options) {
+                var callbacks = { none: {} }, index = 0,
+                    subscribe = function (event, callback) {
+                        if (!callbacks[event])
+                            callbacks[event] = {};
+                        callbacks[event][index] = callback;
+                        return index++;
+                    },
+                    fire = function (event) {
+                        var set;
+                        if (set = callbacks[event]) {
+                            for (var x in set) {
+                                set[x].apply(this, genius.utils.toArray(arguments).slice(1));
+                            }
+                        }
+                    };
+
+                genius.utils.extend(this, {
+                    subscribe: function (event, callback) {
+                        switch (arguments.length) {
+                            case 1:
+                                return subscribe("none", event);
+                            case 2:
+                                return subscribe(event, callback);
+                        }
+                    },
+                    unsubscribe: function (id) {
+                        var output = false;
+                        for (var x in callbacks) {
+                            if (callbacks[x][id]) {
+                                output = true;
+                                delete callbacks[x][id];
+                                break;
+                            }
+                        }
+                        return output;
+                    },
+                    isDirty: function () { return innerConfig.isDirty; },
+                    isNew: function () { return innerConfig.isNew; },
+                    isDeleted: function () { return innerConfig.isDeleted; },
+                    isLoading: function () { return innerConfig.isLoading; },
+                    optionsHash: function () { return innerConfig.optionsHash; },
+                    $delete: function () {
+                        fire("delete");
+                        function clearMe() {
+                            for (var x in this)
+                                if (this[x] && this[x].isAccessor)
+                                    delete this[x];
+                        }
+                        if (innerConfig.isNew) {
+                            clearMe.call(this);
+                            innerConfig.isDeleted = true;
+                        } else {
+                            var url = genius.box.RouteProvider().createRoute(this.url(), this, false);
+                            var _self = this;
+                            innerConfig.isLoading = true;
+                            genius.box.HttpBackend()
+                                .del(url)
+                                .done(function () { innerConfig.isDeleted = true; clearMe.call(_self); })
+                                .always(function () { innerConfig.isLoading = false; });
+                        }
+                        return null;
+                    },
+                    $save: function () {
+                        if (innerConfig.isDeleted)
+                            throw new ReferenceError("You cannot save a deleted resource.");
+                        if (innerConfig.isDirty) {
+                            var provider = genius.box.RouteProvider(),
+                                url = provider.createRoute(this.url(), this, false),
+                                _self = this;
+                            innerConfig.isLoading = true;
+                            genius.box.HttpBackend()[innerConfig.isNew ? "post" : "put"](url, this.toJson())
+                                .done(function (response) {
+                                    response = genius.config.ajax.parseJson().call(this, response);
+                                    setUtils = server;
+                                    for (var x in response) {
+                                        if (_self[x] && _self[x].isAccessor) {
+                                            _self[x](response[x]);
+                                            _self[x].isDirty(false);
+                                        }
+                                    }
+                                    innerConfig.isDirty = innerConfig.isNew = false;
+                                })
+                                .always(function () { innerConfig.isLoading = false; });
                         }
                     }
-                    return output;
-                },
-                isDirty: function () { return isDirty; },
-                isNew: function () { return isNew; },
-                isLoading: genius.utils.accessor(isLoading),
-                isDeleted: function () { return isDeleted; },
-                $delete: function () {
-                    fire("delete");
-                    function clearMe() {
-                        for (var x in this)
-                            if (this[x] && this[x].isAccessor)
-                                delete this[x];
-                    }
-                    if (isNew) {
-                        clearMe.call(this);
-                        isDeleted = true;
-                    } else {
-                        var url = genius.box.RouteProvider().createRoute(this.url(), this, false);
-                        var _self = this;
-                        this.isLoading(true);
-                        genius.box.HttpBackend()
-                            .del(url)
-                            .done(function () { isDeleted = true; clearMe.call(_self); })
-                            .always(function () { _self.isLoading(false); });
-                    }
-                    return null;
-                },
-                $save: function () {
-                    if (isDeleted)
-                        throw new ReferenceError("You cannot save a deleted resource.");
-                    if (isDirty) {
-                        var provider = genius.box.RouteProvider(),
-                            url = provider.createRoute(this.url(), this, false),
-                            _self = this;
-                        this.isLoading(true);
-                        genius.box.HttpBackend()[isNew ? "post" : "put"](url, this.toJson())
-                            .done(function (response) {
-                                response = genius.config.ajax.parseJson().call(this, response);
-                                markDirty = false;
-                                cleanDirties = true;
-                                for (var x in response) {
-                                    console.log(x);
-                                    if (x == "favoriteToy")
-                                        console.log("I'm a toy.");
-                                    if (_self[x] && _self[x].isAccessor) {
-                                        _self[x](response[x]);
-                                        _self[x].isDirty(false);
-                                    }
-                                }
-                                markDirty = true;
-                                cleanDirties = true;
-                                isDirty = false;
-                            })
-                            .always(function () { _self.isLoading(false); });
-                    }
-                },
-                optionsHash: function () {
-                    return options;
-                }
-            });
-            return function (val) { if (markDirty) isDirty = val; };
-        };
-        function setVarTyping(hash) {
-            for (var x in hash) {
-                if (x !== "uniqKey" && x !== "url")
-                    this[x] = hash[x];
+                });
+
             }
         };
-        function populateTypedVar(x, value, dirtyAccessor) {
-            var toCamel = genius.config.ajax.transformToCamelCase();
-            if (toCamel && genius.utils.cases.isCapitalized(x)) {
-                var camellized = genius.utils.cases.pascalToCamel(x);
-                populateTypedVar.call(this, camellized, value, dirtyAccessor);
-                if (this[x])
-                    this[x] = this[camellized];
-                return;
-            }
-            if (typeof value == "object" && toCamel) {
-                value = genius.utils.cases.camelObject(value);
-            }
-            if (this[x] && this[x].getInstance) {
-                this[x] = this[x].getInstance().initialize(value).accessor();
-                this[x].subscribe(function () { dirtyAccessor(true); });
-            } else if (typeof value == "function") {
-                this[x] = value;
-            } else {
-                this[x] = genius.types.dynamic({ nullable: true }).getInstance().initialize(value).accessor();
-            }
-        };
-        function populateTypedVars(options, dirtyAccessor) {
-            for (var x in options) {
-                populateTypedVar.call(this, x, options[x], dirtyAccessor);
-            }
-            for (var x in this) {
-                if (typeof this[x].getInstance == "function") {
-                    this[x] = this[x].getInstance().accessor();
-                    this[x].subscribe(function () { dirtyAccessor(true); });
-                }
-                if (typeof this[x].throwIt == "function") {
-                    try {
-                        this[x].throwIt();
-                    } catch (e) {
-                        throw e;
-                    }
-                }
-            }
-        }
-        var initializing = false;
-        var Resource = function () { };
+        var initializing;
+        function Resource() { };
         Resource.prototype = {
             changedProperties: function () {
                 var output = {};
@@ -705,14 +681,15 @@ var genius = {};
             toJs: function () {
                 var output = {};
                 for (var x in this) {
-                    if (this[x].toJs)
+                    if (this[x].toJs) {
                         output[x] = this[x].toJs();
-                    else if (this[x].isAccessor)
+                    }
+                    else if (this[x].isAccessor) {
                         output[x] = this[x]();
-                    else
-                        continue;
-                    if (output[x] instanceof Resource)
-                        output[x] = output[x].toJs();
+                        if (output[x] instanceof Resource) {
+                            output[x] = output[x].toJs();
+                        }
+                    }
                 }
                 return output;
             },
@@ -720,118 +697,105 @@ var genius = {};
                 return JSON.stringify(this.toJs());
             }
         };
-        function drillDown(str) {
-            var split = str.split(".");
-            var output = this[split[0]];
-            for (var i = 1; i < split.length; i++) {
-                if (!output[split[i]])
-                    return;
-                output = output[split[i]].isAccessor ? output[split[i]]() : output[split[i]];
-            }
-            return output;
-        };
         Resource.extend = function (typeOptions) {
-            var dirtyAccessor;
             if (typeOptions.uniqKey && (field = typeOptions[typeOptions.uniqKey])) {
                 if (!field.nullable())
                     throw new TypeError("Unique keys must be nullable");
                 if (!genius.utils.isNullOrUndefined(field.getDefault()))
                     throw new TypeError("Unique keys must default to undefined or null");
             }
-            var instances = {};
-            function getKey(options) {
-                if (typeOptions.uniqKey) {
-                    var key = drillDown.call(options, typeOptions.uniqKey);
-                    return key;
-                }
-            };
-            var myUrl = typeof typeOptions.url == "function" ? typeOptions.url : function () { return typeOptions.url || ""; };
 
             initializing = true;
             var prototype = new this();
             initializing = false;
 
-            for (var x in typeOptions) {
-                if (typeof typeOptions[x] == "function")
-                    prototype[x] = typeOptions[x];
-            }
-            prototype.url = myUrl;
+            resourceUtils.buildPrototype(prototype, typeOptions);
 
-            var Resource = function (options) {
+            var instances = {},
+                innerConfig = null;
+            function Resource(options) {
                 if (!initializing) {
                     if (typeof this.init == "function")
                         this.init.apply(this, arguments);
-                    dirtyAccessor = initializeFlags.call(this, options);
                     function Resource() {
-                        var key = getKey(options || {});
-                        if (key) {
+                        resourceUtils.setVarTyping.call(this, typeOptions);
+                        resourceUtils.populateVars.call(this, options, resourceUtils.getInnerConfig(innerConfig, options));
+                        var key;
+                        if (key = resourceUtils.getKey(options, typeOptions)) {
                             var instance = instances[key];
                             if (instance) {
-                                populateTypedVars.call(instance, options);
+                                resourceUtils.populateVars.call(instance, options);
                                 return instance;
                             }
                             instances[key] = this;
                         }
-                        setVarTyping.call(this, typeOptions);
-                        if (!noInitialize)
-                            populateTypedVars.call(this, options, dirtyAccessor);
                     };
+                    resourceUtils.initialize.call(this, resourceUtils.getInnerConfig(innerConfig, options), options);
                     Resource.prototype = this;
                     return new Resource();
                 }
             };
 
-            Resource.prototype = prototype;
-            Resource.extend = arguments.callee;
-            Resource.$query = function (data) {
-                data = data || {};
-                var Collection = genius.Collection.extend({ type: genius.types(Resource) });
-                var collection = new Collection();
-                var backend = genius.box.HttpBackend();
-                var url = genius.box.RouteProvider().createRoute(myUrl(), data);
-                collection.$promise = backend.get(url)
-                    .done(function (response) {
-                        globalIsNew = false;
-                        var parsed = genius.config.ajax.parseJson().call(this, response);
-                        collection.concat(parsed);
-                        globalIsNew = true;
-                        collection.isLoading(false);
-                    });
-                return collection;
-            };
+            genius.utils.extend(Resource, {
+                extend: arguments.callee,
+                prototype: prototype,
+                $get: function (data) {
+                    var backend = genius.box.HttpBackend(),
+                        url = genius.box.RouteProvider().createRoute(this.prototype.url(), data);
 
-            Resource.$get = function (data) {
-                var backend = genius.box.HttpBackend();
-                var url = genius.box.RouteProvider().createRoute(myUrl(), data);
-
-                noInitialize = true;
-                globalIsNew = false;
-                var output = new this();
-                for (var x in data) {
-                    if (output[x] && output[x].getInstance)
-                        output[x] = output[x].getInstance().initialize(data[x]).accessor();
+                    innerConfig = {
+                        isNew: false,
+                        isDirty: false,
+                        isLoading: true,
+                        isDeleted: false
+                    };
+                    var configHolder = innerConfig;
+                    var output = new this(data);
+                    innerConfig = null;
+                    output.$promise = backend.get(url)
+                        .done(function (response) {
+                            var parsed = genius.config.ajax.parseJson().call(this, response);
+                            if (typeOptions.parseServerInput)
+                                parsed = typeOptions.parseServerInput(parsed);
+                            setUtils = server;
+                            resourceUtils.populateVars.call(output, parsed, configHolder);
+                            setUtils = client;
+                            configHolder.isDirty = false;
+                        })
+                        .always(function () {
+                           configHolder.isLoading = false;
+                        });
+                    return output;
+                },
+                $query: function (data) {
+                    data = data || {};
+                    var Collection = genius.Collection.extend({ type: genius.types(Resource) });
+                    var collection = new Collection();
+                    var backend = genius.box.HttpBackend();
+                    var url = genius.box.RouteProvider().createRoute(this.prototype.url(), data);
+                    collection.$promise = backend.get(url)
+                        .done(function (response) {
+                            var parsed = genius.config.ajax.parseJson().call(this, response);
+                            innerConfig = {
+                                isNew: false,
+                                isDirty: false,
+                                isLoading: false,
+                                isDeleted: false
+                            };
+                            setUtils = server;
+                            collection.concat(parsed);
+                            setUtils = client;
+                            innerConfig = null;
+                            collection.isLoading(false);
+                        });
+                    return collection;
                 }
-                noInitialize = false;
-                globalIsNew = true;
+            });
 
-                var dirtyPlaceholder = dirtyAccessor;
-
-                var promise = backend.get(url)
-                    .done(function (response) {
-                        var parsed = genius.config.ajax.parseJson().call(this, response);
-                        if (typeOptions.parseJs)
-                            parsed = typeOptions.parseJs(parsed);
-                        populateTypedVars.call(output, parsed, dirtyPlaceholder);
-                    })
-                    .done(function () {
-                        output.isLoading(false);
-                    });
-                output.$promise = promise;
-                return output;
-            };
             return Resource;
         };
         genius.Resource = Resource;
+
     }());
 
     //Collection
@@ -873,7 +837,7 @@ var genius = {};
             initializing = true;
             var prototype = new this();
             initializing = false;
-            
+
             var type = configOptions.type,
                 unique = configOptions.unique;
 
@@ -912,7 +876,7 @@ var genius = {};
                 if (val instanceof genius.Resource) {
                     var _self = this;
                     val.subscribe("delete", function () {
-                        _self.remove(val); 
+                        _self.remove(val);
                     });
                 }
                 var output = (!unique || !genius.utils.contains(this, val)) ?
@@ -1070,7 +1034,7 @@ var genius = {};
                     return fakeRequest.call(this, "get", url);
                 },
                 put: function (url) {
-                    return fakeRequest.call(this, "put",  url);
+                    return fakeRequest.call(this, "put", url);
                 },
                 post: function (url) {
                     return fakeRequest.call(this, "post", url);
@@ -1108,7 +1072,6 @@ var genius = {};
             xhr.setRequestHeader("Accepts", "application/json");
             xhr.setRequestHeader("Content-type", "application/json");
             xhr.onreadystatechange = function () {
-                console.log("state change: ", xhr.readyState, xhr.status);
                 if (xhr.readyState == 4 && xhr.status == 200) {
                     def.resolve(xhr.responseText);
                 }
@@ -1166,7 +1129,7 @@ var genius = {};
             createRoute: function (pattern, data, addQuery) {
                 var regex = /\:([^\/\.\-]+)/gi;
                 var match, output = pattern, alreadyMatched = [];
-                while (match = regex.exec(pattern)) { 
+                while (match = regex.exec(pattern)) {
                     var capture = match[1], replacement;
                     if (data[capture])
                         replacement = data[capture].isAccessor && data[capture]() ? data[capture]() : (typeof data[capture] !== "function" ? data[capture] : "");
@@ -1204,8 +1167,6 @@ var genius = {};
             HttpBackend: genius.box.kernel.dependency(genius.box.FakeHttpBackend)
         });
         genius.box.kernel.add(genius.box.modules.realDataModule);
-        genius.config.types.date.parseInit();
     }());
 
 }());
-

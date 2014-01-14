@@ -2,6 +2,9 @@ var date = new Date();
 while ((new Date() - date) < 2000);
 console.log("starting");
 
+genius.box.kernel.wipe(genius.box.modules.realDataModule);
+genius.box.kernel.add(genius.box.modules.testDataModule);
+
 describe("Plain classes", function () {
     it("should initialize custom class types", function () {
         var GeniusClass = genius.Resource.extend({});
@@ -26,9 +29,7 @@ describe("Plain classes", function () {
             new TestClass();
         }).toThrow();
         var myTestClass = new TestClass({
-            plain: {
-                testProperty: "Test property"
-            }
+            plain: new PlainClass()
         });
 
         expect(myTestClass.genius()).toBe(null);
@@ -46,7 +47,6 @@ describe("Plain classes", function () {
         expect(function () { myTestClass.plain(123); }).toThrow();
         expect(myTestClass.plain()).toBe(myPlainClass);
         expect(myPlainClass.options).toBeUndefined();
-        expect(myPlainClass.testProperty()).toBe("Test property");
         expect(myPlainClass.str).toBe("I'm a string");
         expect(myPlainClass.getString()).toBe("An arbitrary string");
 
@@ -55,15 +55,6 @@ describe("Plain classes", function () {
         myTestClass.plain(myPlainClass2);
         expect(myTestClass.plain()).toBe(myPlainClass2);
         expect(myTestClass.plain().optionsHash).toBe(options);
-
-        var myTestClass2 = new TestClass({
-            plain: {
-                testProperty: "Another test property",
-                propertyNotInDef: "Test property - not in definition"
-            }
-        });
-
-        expect(myTestClass2.plain().propertyNotInDef()).toBe("Test property - not in definition");
     });
 });
 
@@ -107,7 +98,7 @@ describe("Type accessors", function () {
 
         var Class = genius.Resource.extend({
             num: genius.types.number(),
-            bool: genius.types.bool(),
+            bool: genius.types.boolean(),
             str: genius.types.string(),
             dyn: genius.types.dynamic(),
             panther: genius.types(Panther)
@@ -117,7 +108,7 @@ describe("Type accessors", function () {
             bool: true,
             str: "String",
             dyn: "Another string",
-            panther: {}
+            panther: new Panther()
         });
         expect(myClass.num()).toBe(10);
         expect(myClass.bool()).toBe(true);
@@ -131,11 +122,11 @@ describe("The genius box", function () {
     var Zombie, ZombieKing;
     beforeEach(function () {
         Zombie = genius.Resource.extend({
-            eatingBrains: genius.types.bool(),
+            eatingBrains: genius.types.boolean(),
             eatBrains: function () { this.eatingBrains(true); }
         });
         ZombieKing = Zombie.extend({
-            administrating: genius.types.bool(),
+            administrating: genius.types.boolean(),
             ruleZombies: function () { this.administrating(true); }
         });
         genius.box.modules.register("zombieModule", {
@@ -201,15 +192,19 @@ describe("The genius box", function () {
 describe("Type specifications", function () {
     it("should initialize boolean types to booleans", function () {
         var Class = genius.Resource.extend({
-            bool: genius.types.bool(),
-            nullable: genius.types.bool({ nullable: true })
+            bool: genius.types.boolean(),
+            nullable: genius.types.boolean({ nullable: true })
         });
         var myClass = new Class();
         expect(myClass.bool()).toBe(false);
         expect(function () { new Class({ bool: "string" }) }).toThrow();
-        expect(function () { myClass.bool(null); }).toThrow();
+        expect(function () {
+            myClass.bool(null);
+        }).toThrow();
         expect(function () { myClass.bool(undefined); }).toThrow();
-        expect(function () { myClass.nullable(null); }).not.toThrow();
+        expect(function () {
+            myClass.nullable(null);
+        }).not.toThrow();
         expect(function () { myClass.nullable(undefined); }).not.toThrow();
     });
 
@@ -222,14 +217,15 @@ describe("Type specifications", function () {
         var Zombie = genius.Resource.extend({
             brains: genius.types.collection(genius.types(Brain))
         });
+        var Collection = genius.Collection.extend({ type: genius.types(Brain) });
+        var collection = new Collection();
+        collection.concat([new Brain({
+            weight: 10,
+            color: "gray",
+            formerOwner: "Jimmy"
+        })]);
         var zombo = new Zombie({
-            brains: [
-                {
-                    weight: 10,
-                    color: "gray",
-                    formerOwner: "Jimmy"
-                }
-            ]
+            brains: collection
         });
         var brains = zombo.brains(), brain = brains[0];
         expect(brains).toEqual(jasmine.any(genius.Collection));
@@ -420,26 +416,32 @@ describe("Observables", function () {
 describe("Genius config", function () {
     it("should allow transformation of JSON into camel case", function () {
         expect(genius.config.ajax.transformToCamelCase()).toBe(false);
-        var json = {
+        var json = JSON.stringify({
             TestVar: "Test Var",
             SubObj: {
                 Test1: "Test 1",
                 Test2: "Test 2"
             }
-        };
-        var Class = genius.Resource.extend({
-            testVar: genius.types.string()
         });
-        var myClass = new Class(json);
+        var backend = genius.box.HttpBackend();
+        backend.expectGet("/class").toReturn(json);
+        var Class = genius.Resource.extend({
+            testVar: genius.types.string(),
+            url: "/class"
+        });
+        var myClass = Class.$get({});
+        backend.flush();
         expect(myClass.testVar()).toBe("");
         expect(myClass.TestVar()).toBe("Test Var");
 
         genius.config.ajax.transformToCamelCase(true);
         //we must redefine, since midstream changes can't change declared classes.
         var Class2 = genius.Resource.extend({
-            testVar: genius.types.string()
+            testVar: genius.types.string(),
+            url: "/class"
         });
-        var myClass = new Class2(json);
+        var myClass = Class2.$get({});
+        backend.flush();
         expect(myClass.testVar()).toBe("Test Var");
         expect(myClass.TestVar).toBeUndefined();
         expect(myClass.subObj().test1).not.toBeUndefined();
@@ -449,9 +451,11 @@ describe("Genius config", function () {
 
         var Class3 = genius.Resource.extend({
             testVar: genius.types.string(),
-            TestVar: genius.types.string()
+            TestVar: genius.types.string(),
+            url: "/class"
         });
-        var myClass2 = new Class3(json);
+        var myClass2 = Class3.$get({});
+        backend.flush();
         expect(myClass2.testVar()).toBe("Test Var");
         expect(myClass2.TestVar()).toBe("Test Var");
         myClass2.testVar("Another var");
@@ -463,13 +467,13 @@ describe("Genius config", function () {
     });
 
     it("should set default parser on a type", function () {
-        var dateParse = genius.config.types.date.parseInit(),
-            numParse = genius.config.types.number.parseInit(),
-            boolParse = genius.config.types.bool.parseInit();
-        genius.config.types.number.parseInit(function (input) {
+        var dateParse = genius.config.types.date.parseServerInput(),
+            numParse = genius.config.types.number.parseServerInput(),
+            boolParse = genius.config.types.boolean.parseServerInput();
+        genius.config.types.number.parseServerInput(function (input) {
             return parseInt(input);
         });
-        genius.config.types.bool.parseInit(function (input) {
+        genius.config.types.boolean.parseServerInput(function (input) {
             if (input == "True")
                 return true;
             else
@@ -481,22 +485,23 @@ describe("Genius config", function () {
             this.color = color;
         };
         genius.config.types.add("panther", Panther, {
-            parse: function (input) {
+            parseServerInput: function (input) {
                 return new Panther(input.name, input.age, input.color);
             }
         });
         var timestamp = 1387521272839;
-        genius.config.types.date.parseInit(function (input) {
+        genius.config.types.date.parseServerInput(function (input) {
             return new Date(parseInt(input));
         });
         var pantherConfig = genius.config.types.panther;
         var Class = genius.Resource.extend({
             date: genius.types.date(),
             num: genius.types.number(),
-            bool: genius.types.bool(),
-            panther: genius.types.panther()
+            bool: genius.types.boolean(),
+            panther: genius.types.panther(),
+            url: "/myclass"
         });
-        var myClass = new Class({
+        var json = JSON.stringify({
             date: timestamp,
             num: "10191",
             bool: "True",
@@ -506,18 +511,23 @@ describe("Genius config", function () {
                 color: "black"
             }
         });
+        var backend = genius.box.HttpBackend();
+        backend.expectGet("/myclass").toReturn(json);
+        var myClass = Class.$get();
+        backend.flush();
         expect(myClass.date().getTime()).toBe(timestamp);
         expect(myClass.num()).toBe(10191);
         expect(myClass.bool()).toBe(true);
         expect(myClass.panther() instanceof Panther).toBe(true);
 
         genius.config.reset();
+
         //All parsing methods should be reset to their originals,
         //But new custom types will remain, unless {hard: true} is
         //specified on reset.
-        expect(genius.config.types.bool.parseInit()).toBe(boolParse);
-        expect(genius.config.types.date.parseInit().toString()).toEqual(dateParse.toString());
-        expect(genius.config.types.number.parseInit()).toBe(numParse);
+        expect(genius.config.types.boolean.parseServerInput()).toBe(boolParse);
+        expect(genius.config.types.date.parseServerInput().toString()).toEqual(dateParse.toString());
+        expect(genius.config.types.number.parseServerInput()).toBe(numParse);
         expect(genius.config.types.panther).toBe(pantherConfig);
         genius.config.reset({ hard: true });
         expect(genius.config.types.panther).toBeUndefined();
@@ -527,21 +537,21 @@ describe("Genius config", function () {
         function testInit() {
             expect(genius.config.types.date.nullable()).toBe(true);
             expect(genius.config.types.custom.nullable()).toBe(true);
-            expect(genius.config.types.bool.nullable()).toBe(false);
+            expect(genius.config.types.boolean.nullable()).toBe(false);
         }
         testInit();
         genius.config.types.date.nullable(true);
         genius.config.types.custom.nullable(false);
-        genius.config.types.bool.nullable(false);
+        genius.config.types.boolean.nullable(false);
 
         var ChildClass = function () { };
         var Class = genius.Resource.extend({
             date: genius.types.date(),
             child: genius.types(ChildClass),
-            bool: genius.types.bool()
+            bool: genius.types.boolean()
         });
         expect(function () { new Class(); }).toThrow();
-        var myClass = new Class({ child: {}, num: 19 });
+        var myClass = new Class({ child: new ChildClass(), num: 19 });
         expect(function () { myClass.date(null) }).not.toThrow();
         expect(myClass.date()).toBe(null);
         expect(myClass.num()).toBe(19);
@@ -555,18 +565,18 @@ describe("Genius config", function () {
             expect(genius.config.types.number.defaultTo()).toBe(0);
             expect(typeof genius.config.types.date.defaultTo()).toBe("function");
             expect(new Date() - genius.config.types.date.defaultTo()()).toBeLessThan(50);
-            expect(genius.config.types.bool.defaultTo()).toBe(false);
+            expect(genius.config.types.boolean.defaultTo()).toBe(false);
         };
         testInit();
         genius.config.types.number.defaultTo(19);
         var testDate = new Date(2013, 1, 1);
-        genius.config.types.bool.defaultTo(true);
+        genius.config.types.boolean.defaultTo(true);
         genius.config.types.date.defaultTo(testDate);
 
         var Class = genius.Resource.extend({
             num: genius.types.number(),
             date: genius.types.date(),
-            bool: genius.types.bool()
+            bool: genius.types.boolean()
         });
         var myClass = new Class();
         expect(myClass.num()).toBe(19);
@@ -671,7 +681,7 @@ describe("Resources", function () {
         var Class = genius.Resource.extend({
             date: genius.types.date(),
             num: genius.types.number(),
-            bool: genius.types.bool(),
+            bool: genius.types.boolean(),
             sub: genius.types(Sub, { defaultTo: function () { return new Sub(); } })
         });
         var myClass = new Class();
@@ -686,9 +696,10 @@ describe("Resources", function () {
                 name: "Cameron"
             }
         });
-        var myClass2 = new Class({ date: new Date(2013, 0, 1), num: 149, bool: true, sub: { name: "Josephus" } });
+        var sub = new Sub({ name: "Josephus" });
+        var myClass2 = new Class({ date: new Date(2013, 0, 1), num: 149, bool: true, sub: sub });
         date = myClass2.date();
-        expect(myClass2.toJs()).toEqual({
+        var comparer = {
             date: date,
             num: 149,
             bool: true,
@@ -696,7 +707,8 @@ describe("Resources", function () {
                 num: 19,
                 name: "Josephus"
             }
-        });
+        };
+        expect(myClass2.toJs()).toEqual(comparer);
     });
 });
 
@@ -727,14 +739,10 @@ describe("Unique models", function () {
             sub: genius.types(Sub)
         });
         var myClass = new Class({
-            sub: {
-                id: 9
-            }
+            sub: new Sub({ id: 9 })
         });
         var myClass2 = new Class({
-            sub: {
-                id: 9
-            },
+            sub: new Sub({ id: 9 }),
             frenchFries: "delicious"
         });
         expect(myClass).toBe(myClass2);
@@ -769,7 +777,7 @@ describe("Getters and setters", function () {
 
     it("should mark changed variables as dirty", function () {
         var Class = genius.Resource.extend({
-            test: genius.types.bool()
+            test: genius.types.boolean()
         });
         var myClass = new Class();
         expect(myClass.test()).toBe(false);
@@ -786,27 +794,23 @@ describe("Getters and setters", function () {
 
 describe("Parsers", function () {
     it("should parse input hash into property", function () {
+        var backend = genius.box.HttpBackend();
+        backend.expectGet("/classyclass").toReturn(JSON.stringify({ date: [2013, 0, 1] }));
         var Class = genius.Resource.extend({
             date: genius.types.date({
-                parseInit: function (input) {
+                parseServerInput: function (input) {
                     return new Date(input[0], input[1], input[2]);
-                },
-                parseJs: function (input) {
-                    var split = input.split("/");
-                    return new Date(parseInt(split[0]), parseInt(split[1]), parseInt(split[2]));
                 }
-            })
+            }),
+            url: "/classyclass"
         });
-        var myClass = new Class({ date: [2013, 0, 1] });
+        var myClass = Class.$get();
+        backend.flush();
         var date = myClass.date();
         expect(date.getFullYear()).toBe(2013);
         expect(date.getMonth()).toBe(0);
         expect(date.getDate()).toBe(1);
-        myClass.date("2014/9/17");
-        date = myClass.date();
-        expect(date.getFullYear()).toBe(2014);
-        expect(date.getMonth()).toBe(9);
-        expect(date.getDate()).toBe(17);
+
         var myClass2 = new Class();
         expect(new Date() - myClass2.date()).toBeLessThan(50);
     });
@@ -850,7 +854,7 @@ describe("A collection", function () {
 
     it("should allow direct instantiation", function () {
         var collection = new genius.Collection({ type: genius.types(Class) });
-        collection.concat([{}, { name: "Sara" }, { name: "Jimmy" }]);
+        collection.concat([new Class(), new Class({ name: "Sara" }), new Class({ name: "Jimmy" })]);
         expect(collection[0] instanceof Class).toBe(true);
         expect(collection[0].name()).toBe("Cameron");
         expect(collection[1].name()).toBe("Sara");
@@ -859,9 +863,9 @@ describe("A collection", function () {
 
     it("should allow uniqueness configuration", function () {
         var collection = new genius.Collection({ type: genius.types(Class), unique: true });
-        collection.concat([{ id: 1, name: "Jimbo" }, { id: 2, name: "Sally" }]);
+        collection.concat([new Class({ id: 1, name: "Jimbo" }), new Class({ id: 2, name: "Sally" })]);
         expect(collection.length).toBe(2);
-        collection.push({ id: 1, name: "Bobo" });
+        collection.push(new Class({ id: 1, name: "Bobo" }));
         expect(collection.length).toBe(2);
         expect(collection[0].name()).toBe("Bobo");
     });
@@ -907,9 +911,6 @@ describe("Resource requests", function () {
     var Zombie, backend;
     beforeEach(function () {
 
-        genius.box.kernel.wipe(genius.box.modules.realDataModule);
-        genius.box.kernel.add(genius.box.modules.testDataModule);
-
         backend = genius.box.HttpBackend();
     });
 
@@ -925,8 +926,9 @@ describe("Resource requests", function () {
             name: genius.types.string(),
             id: genius.types.number({ nullable: true, defaultTo: null }),
             rand: genius.types.number(),
-            parseJs: function (response) {
-                return genius.config.types.custom.parseJs().call(this, response.zombie);
+            parseServerInput: function (response) {
+                return response.zombie;
+                //return genius.config.types.custom.parseServerInput().call(this, response.zombie);
             },
             favoriteToy: genius.types(Toy)
         });
@@ -949,8 +951,9 @@ describe("Resource requests", function () {
             name: genius.types.string(),
             id: genius.types.number({ nullable: true, defaultTo: null }),
             rand: genius.types.number(),
-            parseJs: function (response) {
-                return genius.config.types.custom.parseJs().call(this, response.zombie);
+            parseServerInput: function (response) {
+                return response.zombie;
+                //return genius.config.types.custom.parseServerInput().call(this, response.zombie);
             }
         });
         backend.expectGet("/api/zombies/4").toReturn("{\"success\": true, \"zombie\": {\"name\": \"Vladimir\", \"id\": 4, \"rand\": 3939}}");
@@ -977,7 +980,7 @@ describe("Resource requests", function () {
         backend.expectGet("/api/zombies?q=munch").toReturn("[{\"name\": \"Muncher\", \"id\": 1, \"rand\": 1091},{\"name\":\"Munchkin\", \"id\": 2, \"rand\": 5687}]");
         var zombies = Zombie.$query({ q: "munch" });
         expect(zombies).toEqual(jasmine.any(genius.Collection));
-        expect(zombies.type().customType).toBe(Zombie);
+        expect(zombies.type().constr()).toBe(Zombie);
         expect(zombies.isLoading()).toBe(true);
         expect(zombies.length).toBe(0);
         backend.flush();
@@ -989,7 +992,6 @@ describe("Resource requests", function () {
             expect(zombies[i]).toEqual(jasmine.any(Zombie));
         }
         expect(zombies.isLoading()).toBe(false);
-        console.log("zombie name", zombies[0].name);
         expect(zombies[0].name()).toBe("Muncher");
         expect(zombies[1].name()).toBe("Munchkin");
     });
@@ -1065,6 +1067,7 @@ describe("Resource requests", function () {
     });
 
     it("should delete resources with DELETE", function () {
+        backend.flush();
         backend.expectGet("/api/zombies/3").toReturn("{\"name\": \"Malvolio\", \"id\": 3, \"rand\": 5757}");
         backend.expectDelete("/api/zombies/3").toReturn("null");
         var zombie = Zombie.$get({ id: 3 });
@@ -1073,6 +1076,7 @@ describe("Resource requests", function () {
     });
 
     it("should call the config's custom parse method", function () {
+        backend.flush();
         genius.config.ajax.parseJs(function (response) {
             return response.data;
         });
@@ -1087,5 +1091,35 @@ describe("Resource requests", function () {
 
         genius.config.reset();
         expect(genius.config.ajax.parse).toBeUndefined();
+    });
+});
+
+describe("Resources awaiting server return", function () {
+    it("should initialize typed variables immediately", function () {
+        var backend = genius.box.HttpBackend();
+        backend.flush();
+        var Zombie = genius.Resource.extend({
+            name: genius.types.string(),
+            age: genius.types.number(),
+            birthday: genius.types.date(),
+            id: genius.types.number({ nullable: true, defaultTo: null }),
+            uniqKey: "id",
+            url: "/zombies/:id"
+        });
+        backend.expectGet("/zombies/1").toReturn("{\"name\":\"Zombo\",\"age\":19,\"birthday\":\"1994-05-17T04:00:00.000Z\",\"id\":1}");
+        var zombo = Zombie.$get({ id: 1 });
+        var nameHolder = zombo.name, ageHolder = zombo.age, dayHolder = zombo.birthday;
+        expect(zombo.name()).toBe("");
+        expect(zombo.age()).toBe(0);
+        expect(new Date() - zombo.birthday()).toBeLessThan(50);
+        backend.flush();
+
+        expect(zombo.name()).toBe("Zombo");
+        expect(zombo.age()).toBe(19);
+        expect(zombo.birthday().getFullYear()).toBe(1994);
+        expect(zombo.id()).toBe(1);
+        expect(zombo.name).toBe(nameHolder);
+        expect(zombo.age).toBe(ageHolder);
+        expect(zombo.birthday).toBe(dayHolder);
     });
 });
