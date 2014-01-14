@@ -1,3 +1,5 @@
 *.zip
 
 starter-kit/jquery-1.8.2.min.js
+angular.min.js
+index.html
