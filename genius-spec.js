@@ -1123,3 +1123,55 @@ describe("Resources awaiting server return", function () {
         expect(zombo.birthday).toBe(dayHolder);
     });
 });
+
+describe("The fromJson method", function () {
+    it("should accept plain old JS Objects", function () {
+        var Zombie = genius.Resource.extend({
+            id: genius.types.number(),
+            name: genius.types.string(),
+            date: genius.types.date()
+        });
+        var zombie = Zombie.fromJs({
+            id: 1,
+            name: "Zombo",
+            date: "2014-01-14T21:39:26.081Z"
+        });
+        expect(zombie.id()).toBe(1);
+        expect(zombie.name()).toBe("Zombo");
+        var date = zombie.date();
+        expect(date.getFullYear()).toBe(2014);
+        expect(date.getMonth()).toBe(0);
+
+        var Collection = genius.Collection.extend({ type: genius.types(Zombie) });
+        var collection = Collection.fromJs([
+            {
+                id: 2,
+                name: "Sarah",
+                date: "1914-01-14T21:44:18.627Z"
+            },
+            {
+                id: 3,
+                name: "Jessica",
+                date: "1994-01-14T21:44:18.627Z"
+            },
+            {
+                id: 4,
+                name: "Zach",
+                date: "1984-01-14T21:44:18.627Z"
+            }
+        ]);
+        expect(collection.length).toBe(3);
+        expect(collection[0]).toEqual(jasmine.any(Zombie));
+        expect(collection[1]).toEqual(jasmine.any(Zombie));
+        expect(collection[2]).toEqual(jasmine.any(Zombie));
+        expect(collection[0].id()).toBe(2);
+        expect(collection[0].date()).toEqual(jasmine.any(Date));
+        var date = collection[0].date();
+        expect(date.getFullYear()).toBe(1914);
+        expect(date.getMonth()).toBe(0);
+        expect(date.getDate()).toBe(14);
+        expect(collection[0].name()).toBe("Sarah");
+        expect(collection[1].name()).toBe("Jessica");
+        expect(collection[2].name()).toBe("Zach");
+    });
+});

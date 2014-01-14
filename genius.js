@@ -657,6 +657,12 @@ var genius = {};
         };
         var initializing;
         function Resource() { };
+        Resource.fromJs = function (obj) {
+            setUtils = server;
+            var resource = new Resource(obj);
+            setUtils = client;
+            return resource;
+        };
         Resource.prototype = {
             changedProperties: function () {
                 var output = {};
@@ -739,6 +745,12 @@ var genius = {};
             genius.utils.extend(Resource, {
                 extend: arguments.callee,
                 prototype: prototype,
+                fromJs: function (obj) {
+                    setUtils = server;
+                    var resource = new this(obj);
+                    setUtils = client;
+                    return resource;
+                },
                 $get: function (data) {
                     var backend = genius.box.HttpBackend(),
                         url = genius.box.RouteProvider().createRoute(this.prototype.url(), data);
@@ -831,6 +843,11 @@ var genius = {};
             };
         };
         Collection.prototype = [];
+        Collection.fromJs = function (arr) {
+            var collection = new genius.Collection();
+            collection.concat(arr);
+            return collection;
+        };
         var initializing = false;
         Collection.extend = function (configOptions) {
             configOptions = configOptions || {};
@@ -927,6 +944,16 @@ var genius = {};
                     };
                     this.fire = function () { };
                 }
+            };
+            Collection.fromJs = function (arr) {
+                var collection = new Collection();
+                setUtils = server;
+                //var mapped = genius.utils.map(arr, function (val) {
+                //    return type.getInstance().initialize(val).accessor().call();
+                //});
+                collection.concat(arr);
+                setUtils = client;
+                return collection;
             };
             Collection.prototype = prototype;
             Collection.extend = arguments.callee;
