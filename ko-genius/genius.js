@@ -657,12 +657,6 @@ var genius = {};
         };
         var initializing;
         function Resource() { };
-        Resource.fromJs = function (obj) {
-            setUtils = server;
-            var resource = new Resource(obj);
-            setUtils = client;
-            return resource;
-        };
         Resource.prototype = {
             changedProperties: function () {
                 var output = {};
@@ -704,7 +698,6 @@ var genius = {};
             }
         };
         Resource.extend = function (typeOptions) {
-            typeOptions = typeOptions || {};
             if (typeOptions.uniqKey && (field = typeOptions[typeOptions.uniqKey])) {
                 if (!field.nullable())
                     throw new TypeError("Unique keys must be nullable");
@@ -746,12 +739,6 @@ var genius = {};
             genius.utils.extend(Resource, {
                 extend: arguments.callee,
                 prototype: prototype,
-                fromJs: function (obj) {
-                    setUtils = server;
-                    var resource = new this(obj);
-                    setUtils = client;
-                    return resource;
-                },
                 $get: function (data) {
                     var backend = genius.box.HttpBackend(),
                         url = genius.box.RouteProvider().createRoute(this.prototype.url(), data);
@@ -826,16 +813,6 @@ var genius = {};
                     this.length;
                 return output;
             };
-            this.addNew = function () {
-                if (options.type) {
-                    if (constr = options.type.constr())
-                        this.push(new constr());
-                    else
-                        this.push(options.type.getInstance().accessor().call());
-                } else {
-                    this.push({});
-                }
-            };
             this.concat = function (arr) {
                 if (options.type)
                     arr = genius.utils.map(arr, function (val) {
@@ -854,11 +831,6 @@ var genius = {};
             };
         };
         Collection.prototype = [];
-        Collection.fromJs = function (arr) {
-            var collection = new genius.Collection();
-            collection.concat(arr);
-            return collection;
-        };
         var initializing = false;
         Collection.extend = function (configOptions) {
             configOptions = configOptions || {};
@@ -893,16 +865,6 @@ var genius = {};
                 output.isDirty = this.isDirty;
                 output.toJs = this.toJs.bind(this);
                 return output;
-            };
-            prototype.addNew = function () {
-                if (type) {
-                    if (constr = type.constr())
-                        this.push(new constr());
-                    else
-                        this.push(type.getInstance().accessor().call());
-                } else {
-                    this.push({});
-                }
             };
 
             prototype.push = function (val) {
@@ -965,16 +927,6 @@ var genius = {};
                     };
                     this.fire = function () { };
                 }
-            };
-            Collection.fromJs = function (arr) {
-                var collection = new Collection();
-                setUtils = server;
-                //var mapped = genius.utils.map(arr, function (val) {
-                //    return type.getInstance().initialize(val).accessor().call();
-                //});
-                collection.concat(arr);
-                setUtils = client;
-                return collection;
             };
             Collection.prototype = prototype;
             Collection.extend = arguments.callee;
