@@ -25,7 +25,7 @@ model definition:
 		url: "/zombies/:id"
 	});
 
-	var zombies = Zombie.$get({ id: 1 });
+	var zombies = Zombie.$query();
 	ko.applyBindings({ myZombies: zombies });
 
 Now use the following markup:
