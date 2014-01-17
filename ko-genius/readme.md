@@ -24,7 +24,8 @@ Now use the following markup:
 your zombies, all with their appropriate information. `name`, `id`, and `age` will all be knockout observables.
 What's more, Resource meta-properties,
 such as `isLoading`, `isDirty`, `isDeleted`, and `isNew` are all observable, so you're
-free to use them as you please in your Knockout bindings.
+free to use them as you please in your Knockout bindings. In this example, the spinner will appear when the 
+zombies request begins, and will disappear when the request returns.
 
 
 
