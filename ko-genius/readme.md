@@ -30,9 +30,9 @@ model definition:
 
 Now use the following markup:
 	
-	<img src="spinner.gif" data-bind="visible: zombies.isLoading" />
-	<div data-bind="foreach: zombies">
-		<p>Name: <span></span>, ID: <span></span>, Age: <span></span></p>
+	<img src="spinner.gif" data-bind="visible: myZombies.isLoading" />
+	<div data-bind="foreach: myZombies">
+		<p>Name: <span data-bind="text: name"></span>, ID: <span data-bind="text: id"></span>, Age: <span data-bind="text: age"></span></p>
 	</div>
 
 `zombies` will become an observable array, and Knockout will render a list of
