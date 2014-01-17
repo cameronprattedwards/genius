@@ -1,4 +1,19 @@
-KO-Genius is just like [Genius] (http://geniusjs.com 'Genius'), but with a few useful additions that make working with KnockoutJS super easy.
+KO-Genius
+=========
+
+Knockout makes it easy to bind view models to the DOM. But once you need to do extensive interaction with the server
+and pull down view models using AJAX, your work becomes tedious, complicated, and filled with boilerplate.
+KO-Genius helps circumvent all of that with callback-free view model definitions and instantiations. No mapping required.
+Automatic parsing. 
+
+And, unlike KnockBack, KO-Genius integrates with Knockout at its deepest levels, meaning smaller
+downloads and much greater efficiency. KO-Genius is just like [Genius] (http://geniusjs.com 'Genius'), 
+but with a few useful additions that make working with KnockoutJS super easy.
+
+To use KO-Genius, just include it on the page after Knockout. Then you're ready to start working.
+
+Benefits
+--------
 
 For starters, any Genius resource property created using a `genius.types.*` method will be a Knockout observable. For example, consider the following
 model definition:
