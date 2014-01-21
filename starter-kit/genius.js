@@ -274,7 +274,11 @@ var genius = {};
                     return val.toISOString();
                 }
             });
-            this.collection = new TypeConfig(false, function () { return new genius.Collection(); });
+            this.collection = new TypeConfig(false, function () { return new genius.Collection(); }, {
+                parseServerInput: function (val, type) {
+                    return type.fromJs(val);
+                }
+            });
             this.number = new TypeConfig(false, 0);
             this.dynamic = new TypeConfig(true, null);
             this.custom = new TypeConfig(true, null, {
@@ -282,7 +286,9 @@ var genius = {};
                     var output = new type();
                     for (var x in val) {
                         if (output[x]) {
-                            if (output[x].isAccessor) {
+                            if (output[x].backdoor) {
+                                output[x].backdoor(val[x]);
+                            } else if (output[x].isAccessor) {
                                 output[x](val[x]);
                             } else if (typeof output[x] !== "function") {
                                 output[x] = val[x];
@@ -523,6 +529,8 @@ var genius = {};
                     this[x].subscribe(function () { innerConfig.isDirty = true; });
                 } else if (typeof value == "function") {
                     this[x] = value;
+                } else if (this[x].backdoor) {
+                    this[x].backdoor(value);
                 } else if (this[x] && this[x].isAccessor) {
                     this[x](value);
                 } else {
@@ -539,6 +547,8 @@ var genius = {};
                         this[x] = this[x].getInstance().accessor();
                         this[x].subscribe(function () { innerConfig.isDirty = true; });
                     }
+                    if (this[x].isAccessor && this[x]().backdoor)
+                        this[x].backdoor = this[x]().backdoor;
                 }
             },
             drillDown: function (obj, str) {
@@ -657,6 +667,12 @@ var genius = {};
         };
         var initializing;
         function Resource() { };
+        Resource.fromJs = function (obj) {
+            setUtils = server;
+            var resource = new Resource(obj);
+            setUtils = client;
+            return resource;
+        };
         Resource.prototype = {
             changedProperties: function () {
                 var output = {};
@@ -698,6 +714,7 @@ var genius = {};
             }
         };
         Resource.extend = function (typeOptions) {
+            typeOptions = typeOptions || {};
             if (typeOptions.uniqKey && (field = typeOptions[typeOptions.uniqKey])) {
                 if (!field.nullable())
                     throw new TypeError("Unique keys must be nullable");
@@ -739,6 +756,12 @@ var genius = {};
             genius.utils.extend(Resource, {
                 extend: arguments.callee,
                 prototype: prototype,
+                fromJs: function (obj) {
+                    setUtils = server;
+                    var resource = new this(obj);
+                    setUtils = client;
+                    return resource;
+                },
                 $get: function (data) {
                     var backend = genius.box.HttpBackend(),
                         url = genius.box.RouteProvider().createRoute(this.prototype.url(), data);
@@ -813,6 +836,16 @@ var genius = {};
                     this.length;
                 return output;
             };
+            this.addNew = function () {
+                if (options.type) {
+                    if (constr = options.type.constr())
+                        this.push(new constr());
+                    else
+                        this.push(options.type.getInstance().accessor().call());
+                } else {
+                    this.push({});
+                }
+            };
             this.concat = function (arr) {
                 if (options.type)
                     arr = genius.utils.map(arr, function (val) {
@@ -831,6 +864,11 @@ var genius = {};
             };
         };
         Collection.prototype = [];
+        Collection.fromJs = function (arr) {
+            var collection = new genius.Collection();
+            collection.concat(arr);
+            return collection;
+        };
         var initializing = false;
         Collection.extend = function (configOptions) {
             configOptions = configOptions || {};
@@ -865,6 +903,16 @@ var genius = {};
                 output.isDirty = this.isDirty;
                 output.toJs = this.toJs.bind(this);
                 return output;
+            };
+            prototype.addNew = function () {
+                if (type) {
+                    if (constr = type.constr())
+                        this.push(new constr());
+                    else
+                        this.push(type.getInstance().accessor().call());
+                } else {
+                    this.push({});
+                }
             };
 
             prototype.push = function (val) {
@@ -925,8 +973,27 @@ var genius = {};
                         changeCallbacks[index] = callback;
                         return index++;
                     };
+                    this.backdoor = function (arr) {
+                        if (type)
+                            arr = genius.utils.map(arr, function (val) {
+                                return type.getInstance().initialize(val).accessor();
+                            });
+                        var args = [0, this.length];
+                        args.push.apply(args, arr);
+                        this.splice.apply(this, arr);
+                    };
                     this.fire = function () { };
                 }
+            };
+            Collection.fromJs = function (arr) {
+                var collection = new Collection();
+                setUtils = server;
+                //var mapped = genius.utils.map(arr, function (val) {
+                //    return type.getInstance().initialize(val).accessor().call();
+                //});
+                collection.concat(arr);
+                setUtils = client;
+                return collection;
             };
             Collection.prototype = prototype;
             Collection.extend = arguments.callee;

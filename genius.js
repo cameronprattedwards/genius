@@ -274,7 +274,11 @@ var genius = {};
                     return val.toISOString();
                 }
             });
-            this.collection = new TypeConfig(false, function () { return new genius.Collection(); });
+            this.collection = new TypeConfig(false, function () { return new genius.Collection(); }, {
+                parseServerInput: function (val, type) {
+                    return type.fromJs(val);
+                }
+            });
             this.number = new TypeConfig(false, 0);
             this.dynamic = new TypeConfig(true, null);
             this.custom = new TypeConfig(true, null, {
@@ -282,7 +286,9 @@ var genius = {};
                     var output = new type();
                     for (var x in val) {
                         if (output[x]) {
-                            if (output[x].isAccessor) {
+                            if (output[x].backdoor) {
+                                output[x].backdoor(val[x]);
+                            } else if (output[x].isAccessor) {
                                 output[x](val[x]);
                             } else if (typeof output[x] !== "function") {
                                 output[x] = val[x];
@@ -523,6 +529,8 @@ var genius = {};
                     this[x].subscribe(function () { innerConfig.isDirty = true; });
                 } else if (typeof value == "function") {
                     this[x] = value;
+                } else if (this[x] && this[x].backdoor) {
+                    this[x].backdoor(value);
                 } else if (this[x] && this[x].isAccessor) {
                     this[x](value);
                 } else {
@@ -539,6 +547,8 @@ var genius = {};
                         this[x] = this[x].getInstance().accessor();
                         this[x].subscribe(function () { innerConfig.isDirty = true; });
                     }
+                    if (this[x].isAccessor && this[x]() && this[x]().backdoor)
+                        this[x].backdoor = this[x]().backdoor;
                 }
             },
             drillDown: function (obj, str) {
@@ -962,6 +972,15 @@ var genius = {};
                     this.subscribe = function (callback) {
                         changeCallbacks[index] = callback;
                         return index++;
+                    };
+                    this.backdoor = function (arr) {
+                        if (type)
+                            arr = genius.utils.map(arr, function (val) {
+                                return type.getInstance().initialize(val).accessor();
+                            });
+                        var args = [0, this.length];
+                        args.push.apply(args, arr);
+                        this.splice.apply(this, arr);
                     };
                     this.fire = function () { };
                 }

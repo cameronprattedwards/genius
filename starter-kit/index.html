@@ -4,7 +4,11 @@
 <head>
     <meta charset="utf-8" />
     <script type="text/javascript" src="genius.js"></script>
-    <script type="text/javascript"></script>
+    <script type="text/javascript">
+        var Brain = genius.Resource.extend({});
+        var Zombie = genius.Resource.extend({ brains: genius.types.collection(genius.types(Brain)), url: "/zombies/:id" });
+        var zombies = Zombie.$query();
+    </script>
     <title>Example Page</title>
 </head>
 <body>
