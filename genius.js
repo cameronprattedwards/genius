@@ -722,6 +722,11 @@ var genius = {};
                 return JSON.stringify(this.toJs());
             }
         };
+        Object.defineProperty(Resource.prototype, "pojo", {
+            get: function () {
+                return this.toJs();
+            }
+        });
         Resource.extend = function (typeOptions) {
             typeOptions = typeOptions || {};
             if (typeOptions.uniqKey && (field = typeOptions[typeOptions.uniqKey])) {
