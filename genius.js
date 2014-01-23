@@ -274,7 +274,10 @@ var genius = {};
                     return val.toISOString();
                 }
             });
-            this.collection = new TypeConfig(false, function () { return new genius.Collection(); }, {
+            this.collection = new TypeConfig(false, function (options) {
+                var Collection = genius.Collection.extend({ type: options.genericType });
+                return new Collection();
+            }, {
                 parseServerInput: function (val, type) {
                     return type.fromJs(val);
                 }
@@ -373,11 +376,12 @@ var genius = {};
             this.initialize = options.initialize || function () { return parseDefault; };
             this.filter = filter;
             this.value = this.defaultTo;
+            this.genericType = options.type;
         };
 
         function PlatonicType(options, constr, typeName, filter) {
             options = new TypeOptions(options, constr, typeName, filter);
-            options.filter(options.defaultTo(), options, true);
+            options.filter(options.defaultTo(options), options, true);
             this.getInstance = function () {
                 return new PlatonicInstance(genius.utils.extend({}, options));
             };
@@ -429,7 +433,7 @@ var genius = {};
 
         function PlatonicInstance(options) {
             var _self = this;
-            options.value = options.defaultTo();
+            options.value = options.defaultTo(options);
             this.accessor = genius.utils.once(function () {
                 return accessor(options);
             });
@@ -476,7 +480,7 @@ var genius = {};
                 return new PlatonicType(options, Date, "date", throwItClass);
             },
             collection: function (options) {
-                return new PlatonicType(options, genius.Collection, "collection", throwItClass);
+                return new PlatonicType({ type: options }, genius.Collection, "collection", throwItClass);
             },
             dynamic: function (options) {
                 return new PlatonicType(options, function () {}, "dynamic", throwItNull);
@@ -547,8 +551,10 @@ var genius = {};
                         this[x] = this[x].getInstance().accessor();
                         this[x].subscribe(function () { innerConfig.isDirty = true; });
                     }
-                    if (this[x].isAccessor && this[x]() && this[x]().backdoor)
-                        this[x].backdoor = this[x]().backdoor;
+                    if (this[x].isAccessor && this[x]() && this[x]().backdoor) {
+                        var placeholder = this[x];
+                        this[x].backdoor = function () { return placeholder().backdoor.apply(placeholder(), arguments); };
+                    }
                 }
             },
             drillDown: function (obj, str) {
@@ -651,7 +657,10 @@ var genius = {};
                                     response = genius.config.ajax.parseJson().call(this, response);
                                     setUtils = server;
                                     for (var x in response) {
-                                        if (_self[x] && _self[x].isAccessor) {
+                                        if (_self[x] && _self[x].backdoor) {
+                                            _self[x].backdoor(response[x]);
+                                            _self[x].isDirty(false);
+                                        } else if (_self[x] && _self[x].isAccessor) {
                                             _self[x](response[x]);
                                             _self[x].isDirty(false);
                                         }
@@ -758,7 +767,8 @@ var genius = {};
                 prototype: prototype,
                 fromJs: function (obj) {
                     setUtils = server;
-                    var resource = new this(obj);
+                    var resource = new this();
+                    resourceUtils.populateVars.call(resource, obj, innerConfig);
                     setUtils = client;
                     return resource;
                 },
@@ -976,11 +986,11 @@ var genius = {};
                     this.backdoor = function (arr) {
                         if (type)
                             arr = genius.utils.map(arr, function (val) {
-                                return type.getInstance().initialize(val).accessor();
+                                return type.getInstance().initialize(val).accessor().call();
                             });
                         var args = [0, this.length];
                         args.push.apply(args, arr);
-                        this.splice.apply(this, arr);
+                        this.splice.apply(this, args);
                     };
                     this.fire = function () { };
                 }
@@ -988,9 +998,9 @@ var genius = {};
             Collection.fromJs = function (arr) {
                 var collection = new Collection();
                 setUtils = server;
-                //var mapped = genius.utils.map(arr, function (val) {
-                //    return type.getInstance().initialize(val).accessor().call();
-                //});
+                var mapped = genius.utils.map(arr, function (val) {
+                    return type.getInstance().initialize(val).accessor().call();
+                });
                 collection.concat(arr);
                 setUtils = client;
                 return collection;

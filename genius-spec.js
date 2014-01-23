@@ -4,6 +4,7 @@ describe("Collections", function () {
         name: genius.types.string({ defaultTo: "Cameron" }),
         uniqKey: "id"
     });
+
     it("should initialize typed arrays to collections", function () {
         var Brain = genius.Resource.extend({
             weight: genius.types.number(),
@@ -30,6 +31,7 @@ describe("Collections", function () {
         expect(brain.color()).toBe("gray");
         expect(brain.formerOwner()).toBe("Jimmy");
     });
+
     it("should splice out deleted items on deletion", function () {
         var Collection = genius.Collection.extend({ type: genius.types(Class) });
         var myClass = new Class({ id: 1, name: "Jammer" });
@@ -59,6 +61,7 @@ describe("Collections", function () {
         expect(collection.length).toBe(2);
         expect(collection[0].name()).toBe("Bobo");
     });
+
     describe(".addNew()", function () {
         it("should push a new Resource onto itself", function () {
             var Class = genius.Resource.extend();
@@ -71,6 +74,25 @@ describe("Collections", function () {
         });
     });
 
+    it("should parse JSON arrays into typed collections", function () {
+        var Brain = genius.Resource.extend({ weight: genius.types.number() });
+        var Zombie = genius.Resource.extend({
+            brains: genius.types.collection(genius.types(Brain)),
+            id: genius.types.number(),
+            url: "/zombies/:id"
+        });
+        var backend = genius.box.HttpBackend();
+        backend.expectGet("/zombies/1").toReturn("{\"brains\":[{\"weight\":9}, {\"weight\":12}], \"id\":1}");
+        var zombie = Zombie.$get({ id: 1 });
+        backend.flush();
+        expect(zombie.brains()).toEqual(jasmine.any(genius.Collection));
+        var brains = zombie.brains();
+        expect(brains.length).toBe(2);
+        expect(brains[0]).toEqual(jasmine.any(Brain));
+        expect(brains[1]).toEqual(jasmine.any(Brain));
+        expect(brains[0].weight()).toBe(9);
+        expect(brains[1].weight()).toBe(12);
+    });
 });
 
 describe("Resource requests", function () {
@@ -107,7 +129,21 @@ describe("Resource requests", function () {
 
 });
 
-describe("The fromJson method", function () {
+describe("The fromJs method", function () {
+    it("should parse typed collections into their types", function () {
+        var Brain = genius.Resource.extend({ weight: genius.types.number() });
+        var Zombie = genius.Resource.extend({ brains: genius.types.collection(genius.types(Brain)) });
+        var zombie = Zombie.fromJs({ brains: [{ weight: 19 }, { weight: 100 }, { weight: 203 }] });
+        var brains = zombie.brains();
+        for (var i = 0; i < brains.length; i++)
+            expect(brains[i]).toEqual(jasmine.any(Brain));
+        expect(brains).toEqual(jasmine.any(genius.Collection));
+        expect(brains.length).toBe(3);
+        expect(brains[0].weight()).toBe(19);
+        expect(brains[1].weight()).toBe(100);
+        expect(brains[2].weight()).toBe(203);
+    });
+
     it("should accept plain old JS Objects", function () {
         var Zombie = genius.Resource.extend({
             id: genius.types.number(),
