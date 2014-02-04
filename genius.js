@@ -1249,7 +1249,7 @@ var genius = {};
                     output = output.replace(match[0], replacement);
                     alreadyMatched.push(match[1]);
                 }
-                if (/\/$/.test(output))
+                while (/\/$/.test(output))
                     output = output.substr(0, output.length - 1);
                 if (addQuery !== false)
                     output += param(genius.utils.except(data instanceof genius.Resource ? data.properties() : data, alreadyMatched));

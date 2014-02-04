@@ -865,6 +865,10 @@ describe("The route provider", function () {
         data = { controller: "zombies", action: "munch", id: 1091 };
         expect(prov.createRoute(pattern, data)).toBe("/api?controller=zombies&action=munch&id=1091");
 
+        pattern = "/api/adventures/:id/:action/:secondaryId";
+        data = {};
+        expect(prov.createRoute(pattern, data)).toBe("/api/adventures");
+
         var Class = genius.Resource.extend({ id: genius.types.number(), name: genius.types.string(), date: genius.types.date() });
         var date = new Date(), dateStr = date.toISOString();
         pattern = "/api/:id/:name";
