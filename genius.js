@@ -9,6 +9,30 @@ var genius = {};
     //Utils
     (function () {
         genius.utils = {
+            bind: function (fn, oThis) {
+                var sliced = genius.utils.toArray(arguments).slice(1);
+                if (Function.prototype.bind)
+                    return Function.prototype.bind.apply(fn, sliced);
+
+                if (typeof fn !== "function") {
+                    // closest thing possible to the ECMAScript 5 internal IsCallable function
+                    throw new TypeError("genius.utils.bind - what is trying to be bound is not callable");
+                }
+
+                var aArgs = Array.prototype.slice.call(arguments, 1),
+                    fToBind = fn,
+                    fNOP = function () { },
+                    fBound = function () {
+                        return fToBind.apply(fn instanceof fNOP && oThis
+                                               ? fn
+                                               : oThis,
+                                             aArgs.concat(sliced));
+                    };
+                fNOP.prototype = this.prototype;
+                fBound.prototype = new fNOP();
+
+                return fBound;
+            },
             cascadingGet: function (propName, sources) {
                 for (var i = 0; i < sources.length; i++) {
                     if (sources[i] && sources[i].hasOwnProperty(propName)) {
@@ -74,10 +98,13 @@ var genius = {};
             },
             toArray: function (iterable) {
                 var arr = [];
-                for (var i = 0; i < iterable.length; i++) {
-                    arr.push(iterable[i]);
-                }
+                Array.prototype.push.apply(arr, iterable);
                 return arr;
+                //var arr = [];
+                //for (var i = 0; i < iterable.length; i++) {
+                //    arr.push(iterable[i]);
+                //}
+                //return arr;
             },
             accessor: function (value) {
                 var output = function () {
@@ -553,7 +580,9 @@ var genius = {};
                     }
                     if (this[x].isAccessor && this[x]() && this[x]().backdoor) {
                         var placeholder = this[x];
-                        this[x].backdoor = function () { return placeholder().backdoor.apply(placeholder(), arguments); };
+                        this[x].backdoor = genius.utils.bind(function () {
+                            return this().backdoor.apply(this(), arguments);
+                        }, placeholder);
                     }
                 }
             },

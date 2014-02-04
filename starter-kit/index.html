@@ -9,8 +9,66 @@
         var Zombie = genius.Resource.extend({ brains: genius.types.collection(genius.types(Brain)), url: "/zombies/:id" });
         var zombies = Zombie.$query();
     </script>
+    <style type="text/css">
+        @media (min-width: 0px) {
+            .jarshon {
+                display: block;
+            }
+        }
+        @media (min-width: 768px) {
+            .jarshon {
+                float: left;
+            }
+        }
+        .jarshon {
+            border: 1px black solid;
+            padding: 10px;
+            margin: 10px;
+        }
+        .landscape {
+            width: 110px;
+            height: 50px;
+        }
+        .portrait {
+            width: 50px;
+            height: 110px;
+        }
+        div {
+            border: 1px black solid;
+            margin: 10px;
+            position: absolute;
+        }
+    </style>
     <title>Example Page</title>
 </head>
 <body>
+<!--    <div class="jarshon">
+        <h1>Jumbo</h1>
+        <p>I'm a crumbo jumbo. Get down with the mumbo mambo.</p>
+    </div>
+    <div class="jarshon">
+        <h1>Happy</h1>
+        <p>Let's get hip and let's get happy. Go and talk to your pappy.</p>
+    </div>
+    <div class="jarshon">
+        <h1>Slump</h1>
+        <p>Not doin' so good. Feel like I'm running in circles.</p>
+    </div>
+    <div class="jarshon">
+        <h1>Juice</h1>
+        <p>Not to be confused with Jews. Hey, that rhymed.</p>
+    </div>
+    <div class="jarshon">
+        <h1>Trap</h1>
+        <p>Where in the world is Carmen San Diego? Well, she's trapped.</p>
+    </div>-->
+    <div class="landscape"></div>
+    <div class="portrait"></div>
+    <div class="landscape"></div>
+    <div class="landscape"></div>
+    <div class="landscape"></div>
+    <div class="portrait"></div>
+    <div class="portrait"></div>
+    <div class="landscape"></div>
 </body>
 </html>

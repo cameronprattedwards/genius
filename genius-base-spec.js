@@ -819,6 +819,28 @@ describe("A collection", function () {
         var collection = new Collection();
         expect(typeof collection.push).toBe("function");
     });
+
+    it("should parse queries properly", function () {
+        var backend = genius.box.HttpBackend();
+        backend.expectGet("/classes/1").toReturn("{\"colors\":[\"red\",\"blue\",\"yellow\",\"green\"], \"shapes\":[\"triangle\",\"square\",\"hexagon\"]}");
+        var Class = genius.Resource.extend({
+            colors: genius.types.collection(genius.types.string()),
+            shapes: genius.types.collection(genius.types.string()),
+            url: "/classes/:id"
+        });
+        var myClass = Class.$get({ id: 1 });
+        backend.flush();
+        expect(myClass.colors().length).toBe(4);
+        expect(myClass.shapes().length).toBe(3);
+        var colors = myClass.colors(), shapes = myClass.shapes();
+        expect(colors[0]).toBe("red");
+        expect(colors[1]).toBe("blue");
+        expect(colors[2]).toBe("yellow");
+        expect(colors[3]).toBe("green");
+        expect(shapes[0]).toBe("triangle");
+        expect(shapes[1]).toBe("square");
+        expect(shapes[2]).toBe("hexagon");
+    });
 });
 
 describe("The route provider", function () {
@@ -1035,5 +1057,35 @@ describe("Resources awaiting server return", function () {
         expect(zombo.name).toBe(nameHolder);
         expect(zombo.age).toBe(ageHolder);
         expect(zombo.birthday).toBe(dayHolder);
+    });
+});
+
+describe("Deeply nested collections", function () {
+    it("should set class methods on all objects", function () {
+        var Neuron = genius.Resource.extend({
+            fire: function () {
+                console.log("I'm firing.");
+            }
+        });
+
+        var Brain = genius.Resource.extend({
+            neurons: genius.types.collection(genius.types(Neuron))
+        });
+
+        var Zombie = genius.Resource.extend({
+            brains: genius.types.collection(genius.types(Brain)),
+            url: "/zombies/:id"
+        });
+
+        var backend = genius.box.HttpBackend();
+        backend.expectGet("/zombies/1").toReturn("{\"brains\":[{\"neurons\":[{},{},{}]}]}");
+        var zombie = Zombie.$get({ id: 1 });
+        backend.flush();
+        var brains = zombie.brains(), neurons = brains[0].neurons();
+        expect(brains.length).toBe(1);
+        expect(neurons.length).toBe(3);
+        expect(typeof neurons[0].fire).toBe("function");
+        expect(typeof neurons[1].fire).toBe("function");
+        expect(typeof neurons[2].fire).toBe("function");
     });
 });
