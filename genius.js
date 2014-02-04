@@ -1231,7 +1231,8 @@ var genius = {};
         function param(data) {
             var pairs = [];
             for (var x in data) {
-                pairs.push(x + "=" + (data[x].toQuery ? data[x].toQuery() : data[x]));
+                if (data[x])
+                    pairs.push(x + "=" + (data[x].toQuery ? data[x].toQuery() : data[x]));
             }
             return pairs.length ? "?" + pairs.join("&") : "";
         };
