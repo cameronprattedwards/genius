@@ -1,4 +1,5 @@
 //A thing
+//Garbage and monkeys
 describe("Collections", function () {
     var Class = genius.Resource.extend({
         id: genius.types.number({ nullable: true, defaultTo: null }),
