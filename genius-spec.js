@@ -1,5 +1,5 @@
 //A thing
-//Garbage and monkeys
+//Garbage and monkeys -- Slathering madness
 describe("Collections", function () {
     var Class = genius.Resource.extend({
         id: genius.types.number({ nullable: true, defaultTo: null }),
