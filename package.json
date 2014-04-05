@@ -1,0 +1,28 @@
+{
+  "name": "genius",
+  "version": "0.0.0",
+  "description": "A lightweight data framework for JavaScript applications",
+  "main": "genius.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cameronprattedwards/genius.git"
+  },
+  "author": "Cameron Edwards",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/cameronprattedwards/genius/issues"
+  },
+  "homepage": "https://github.com/cameronprattedwards/genius",
+  "devDependencies": {
+    "grunt": "~0.4.1",
+    "grunt-bower-task": "~0.3.x",
+    "grunt-contrib-uglify": "~0.3.2",
+    "grunt-contrib-concat": "^0.3.0"
+  }
+}
