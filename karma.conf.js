@@ -14,8 +14,8 @@ module.exports = function(config) {
     // list of files / patterns to load in the browser
     files: [
       'genius.js',
-      'genius-base-spec.js',
-      'genius-spec.js'
+      'test/genius-base-spec.js',
+      'test/genius-spec.js'
     ],
 
 
