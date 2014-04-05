@@ -1,6 +1,0 @@
-I'm a new file.
-<<<<<<< HEAD
-You are also new.
-=======
-You are also old.
->>>>>>> newbranch

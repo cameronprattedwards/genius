@@ -479,7 +479,7 @@ var genius = {};
             if (typeof value == options.typeName) return;
             // Sometimes this throws when value is a string, other times when value is an object
 	    // This handles both cases. Not sure if this is the best way to handle it.
-	    if (typeof value() == options.typeName) return;
+	    if (typeof value == options.typeName) return;
             if ((options.nullable || nullable) && genius.utils.isNullOrUndefined(value)) return;
             throw new TypeError("Value must be of type " + options.typeName + (options.nullable ? ", null, or undefined" : ""));
         };
