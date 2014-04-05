@@ -1,0 +1,66 @@
+.myNote,
+.note,
+.groupedNote {
+  cursor: move;
+  width: 115px;
+  height: 105px;
+  background-color: #fff;
+  font-size: 9px;
+  overflow: hidden;
+  line-height: 15px;
+}
+.myNote .content {
+  height: 42px;
+  padding: 6px 9px;
+  font-weight: bold;
+  overflow: hidden;
+}
+.myNote .content * {
+  font-size: 9px !important;
+  display: inline;
+  color: black !important;
+  padding: 0;
+  margin: 0;
+}
+.myNote .content p {
+  margin-left: 2px;
+}
+.note {
+  position: absolute;
+  word-wrap: break-word;
+  width: 135px;
+  height: 105px;
+}
+.note .title {
+  font-weight: bold;
+  border-bottom: 1px solid #bbb;
+  background-color: #ebebeb;
+  min-height: 15px;
+  padding: 6px 9px 4px 9px;
+  font-size: 11px;
+  border-top-left-radius: 1px;
+  border-top-right-radius: 1px;
+  position: relative;
+}
+.note .body {
+  padding: 3px;
+}
+.groupedNote {
+  float: left;
+  list-style: none;
+  word-wrap: break-word;
+}
+.groupedNote.selected {
+  width: 113px;
+  height: 103px;
+}
+.groupedNote .title {
+  font-weight: bold;
+  background-color: #ebebeb;
+  min-height: 15px;
+  padding: 6px 9px 4px;
+  font-size: 11px;
+}
+.groupedNote .title .nh-expand {
+  display: none;
+}
