@@ -77,7 +77,7 @@ var genius = {};
             map: function (array, callback) {
                 var copy = [];
                 // Handle case where array is null
-		if (array) {
+        		if (array) {
                     for (var i = 0; i < array.length; i++) {
                         copy[i] = callback.call(this, array[i]);
                     }
@@ -103,11 +103,6 @@ var genius = {};
                 var arr = [];
                 Array.prototype.push.apply(arr, iterable);
                 return arr;
-                //var arr = [];
-                //for (var i = 0; i < iterable.length; i++) {
-                //    arr.push(iterable[i]);
-                //}
-                //return arr;
             },
             accessor: function (value) {
                 var output = function () {
