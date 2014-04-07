@@ -1268,7 +1268,6 @@ var genius = {};
         } else if (window.ActiveXObject) {
             genius.box.set("XHR", function () { return new ActiveXObject("Microsoft.XMLHTTP"); });
         }
-
     }());
 
     //Setup

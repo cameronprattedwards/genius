@@ -110,7 +110,7 @@ define({
         return obj1;
     },
     contains: function (haystack, needle) {
-        return genius.utils.indexOf(haystack, needle) !== -1;
+        return this.indexOf(haystack, needle) !== -1;
     },
     indexOf: function (haystack, needle) {
         if (Array.prototype.indexOf) {
