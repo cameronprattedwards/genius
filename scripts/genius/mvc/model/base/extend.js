@@ -1,13 +1,15 @@
-define(["./utils"], function (utils) {
+define(["genius/utils"], function (utils) {
+	var initializing;
+
 	return function (methods) {
-		var initializing = true;
+		initializing = true;
 		var prototype = new this();
 		initializing = false;
 
 		utils.extend(prototype, methods);
 
 		function Class() {
-			if (!initializing && typeof this.init == "function")
+			if (!initializing)
 				this.init.apply(this, arguments);
 		};
 
