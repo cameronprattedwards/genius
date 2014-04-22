@@ -42,7 +42,6 @@ define(["./utils/deferred"], function (deferred) {
 	        // xhr.setRequestHeader("Content-type", options.contentType);
 
 			xhr.onreadystatechange = function () {
-				console.log(xhr.readyState);
 				if (xhr.readyState == 4) {
 					if (xhr.status == 200)
 						def.resolve(xhr.responseText);

@@ -1,18 +1,10 @@
-<div class="bigdiv" id="something">
-	<h1 class="headline">Cameron's Page</h1>
-	<p>This page was built using templates.</p>
-	<p>Even better, it's built using JavaScript templates.</p>
-
-	{{#if sleeping}}
-	<p>I'm sleeping</p>
-	{{/if}}
-
-	{{#each paragraphs}}
-		<p>
-			To learn more about the author, 
-			<strong>Cameron Edwards</strong>, 
-			check out his website, 
-			<a href="http://cameronpedwards.com">cameronpedwards.com</a>
-		</p>
+<h1>To Dos</h1>
+<ul>
+	{{#each toDos}}
+		<li>{{text}} Due: {{dueDate}}</li>
 	{{/each}}
-</div>
+	{{#with unsaved}}
+		<li><input type="text" {{value text}}/> {{dueDate}} {{text}}</li>
+	{{/with}}
+</ul>
+<p><button {{event "click" save}}>Save</button></p>

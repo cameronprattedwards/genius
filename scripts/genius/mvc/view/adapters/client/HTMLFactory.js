@@ -1,34 +1,66 @@
 define(["./HTMLElement", "./BestNodeGetter"], function (HTMLElement, bestNode) {
-	return function (html, model) {
+	return function (html, bestNode) {
 		var el = new HTMLElement();
 
 		var body = /^<([^>]+)>/.exec(html[0])[1];
 
 		el.tagName = /^([^\s]+)/.exec(body)[1];
 
-		var attrs = /^[^\s]+(.*)/.exec(body)[1].trim().split(/\s+/);
+		var attrString = /^[^\s]+(.*)/.exec(body.replace(/\/\s*$/, ""))[1].trim();
 
-		for (var attr in attrs) {
-			var bits = attr.split("="),
-				key = bits[0],
-				value = "";
+		var individualAttrRegex = /^[^"'\s=\{]+(=("[^"]*")|('[^']*'))?\s*/,
+			dirRegex = /^\{\{([^\}]+)\}\}\s*/;
 
-			if (bits.length > 1)
-				value = bits[1].replace(/^("|')/, "").replace(/("|')$/, "");
+		if (attrString) {
+			var attrs = [],
+				match;
 
-			el.attributes[key] = value;
+			while (attrString.length) {
+				if (match = individualAttrRegex.exec(attrString)) {
+					var attr = match[0];
+					attrs.push(attr.trim());
+					attrString = attrString.replace(attr, "");
+				} else if (match = dirRegex.exec(attrString)) {
+					var dir = match[1].trim();
+					el.bind(dir);
+					attrString = attrString.replace(match[0], "");
+				} else {
+					throw new Error("Incorrectly formatted HTML tag");
+				}
+			}
+
+			for (var attr in attrs) {
+				var bits = attrs[attr].split("="),
+					key = bits[0],
+					value = "";
+
+					if (!key)
+						console.log("empty: ", attrString, attrString.length, body);
+
+				if (bits.length > 1)
+					value = bits[1].replace(/^("|')/, "").replace(/("|')$/, "");
+
+				el.attributes[key] = value;
+			}
 		}
 
 		var endOfOpeningTag = html[0].search(">") + 1;
-		html[0] = html[0].slice(endOfOpeningTag, html.length);
+		var selfClosing = /^<[^>]+\/>/.test(html[0]);
+		html[0] = html[0].slice(endOfOpeningTag, html[0].length);
 
-		var closingTag = new RegExp("<\\/" + el.tagName + "\\s*>");
+		if (!selfClosing) {
+			var closingTag = new RegExp("^<\\/" + el.tagName + "\\s*>");
 
-		//Does the factory need to handle populating the children?
+			//Does the factory need to handle populating the children?
 
-		while (html[0].length && !closingTag.test(html)) {
-			var children = bestNode(html, model);
-			el.splice.apply(el, [0].concat(children));
+			var i = 0;
+			while (html[0].length && !closingTag.test(html[0])) {
+				var children = bestNode(html);
+				el.children.push.apply(el.children, children);
+			}
+
+			if (closingTag.test(html[0]))
+				html[0] = html[0].slice(html[0].search(">") + 1);
 		}
 
 		return [el];

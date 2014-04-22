@@ -8,20 +8,27 @@ define(["../Directive", "./splice"], function (Directive, splice) {
 			model = model[this.args[0]];
 
 			function template(model) {
-				return this.children.map(function (child) {
-					return child.compile(model);
-				});
+				var output = [];
+				for (var i = 0; i < this.children.length; i++) {
+					output.push.apply(output, this.children[i].compile(model));
+				}
+				return output;
+			}
+
+			function domIndexFn(offset, i, kids) {
+				return offset + (i * kids.length);
 			}
 
 			function update(array) {
 				var i = 0,
-					offset = indexOf(parent.childNodes, _self.compiledOpen) + 1;
+					offset = Array.prototype.indexOf.call(parent.childNodes, _self.compiledOpen) + 1,
+					domIndex = domIndexFn(offset, i, _self.children);
 
 				for (; i < array.length; i++) {
 					var entry = array[i],
 						entryInCached,
 						entryEls,
-						domIndex = (i + offset) * _self.children.length;
+						domIndex = domIndexFn(offset, i, _self.children);
 
 					if (cached[i] === entry)
 						continue;
@@ -38,24 +45,28 @@ define(["../Directive", "./splice"], function (Directive, splice) {
 					}
 
 					cached.splice(i, 0, entryInCached);
-					splice(parent, domIndex, 0, entryEls);
+					splice.apply(parent, [parent, domIndex, 0].concat(entryEls));
 				}
 
-				var extraLength = cached.length - arrayValue.length;
+				var extraLength = cached.length - array.length;
 				cached.splice(i, extraLength);
-				wrapped.splice(domIndex, extraLength * _self.children.length);
+				splice(parent, domIndex, extraLength * _self.children.length);
 			}
 
 			model.subscribe(update);
 
-			var output = [this.compiledOpen = this.open.compile()];
+			var output = this.open.compile();
+			this.compiledOpen = output[0];
 
 			for (var i = 0; i < model.length; i++) {
 				cached.push(model[i]);
-				output.push.apply(output, translate.call(this, model[i]));
+				output.push.apply(output, template.call(this, model[i]));
 			}
 
-			output.push(this.compiledClose = this.close.compile());
+			var compiledCloseArray = this.close.compile();
+			this.compiledClose = compiledCloseArray[0];
+			output.push(this.compiledClose);
+
 			return output;
 		}
 	});

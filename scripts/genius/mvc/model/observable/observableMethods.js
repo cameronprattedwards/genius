@@ -8,15 +8,15 @@ define([], function () {
 				this.index = 0;
 			},
 			subscribe: function (callback, evt) {
-				if (!this.listeners[event])
-					this.listeners[event] = {};
+				if (!this.listeners[evt])
+					this.listeners[evt] = {};
 
 				this.allListeners[this.index] = {
 					cb: callback,
 					evt: evt
 				};
 
-				this.listeners[event][this.index] = callback;
+				this.listeners[evt][this.index] = callback;
 
 				return this.index++;
 			},

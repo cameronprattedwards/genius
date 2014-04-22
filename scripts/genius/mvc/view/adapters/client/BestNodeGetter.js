@@ -4,15 +4,17 @@ define([
 	"./TextFactory",
 	"./directives"
 	], function (HTMLFactory, DirectiveFactory, TextFactory, directives) {
-	return function (html) {
-		if (/^<[\>]+>/.test(html))
-			return HTMLFactory;
+	var bestNode = function (html) {
+		if (/^<[^>]+>/.test(html[0]))
+			return HTMLFactory(html, bestNode);
 
-		if (/^\{\{#[^\}]+\}\}/.test(html)) {
+		if (/^\{\{#[^\}]+\}\}/.test(html[0])) {
 			var tagName = /\{\{#([^\s]+)[^\}]*\}\}/.exec(html)[1];
-			return DirectiveFactory(directives[tagName]);
+			return DirectiveFactory(directives[tagName])(html, bestNode);
 		}
 
-		return TextFactory;
+		return TextFactory(html, bestNode);
 	};
+
+	return bestNode;
 });

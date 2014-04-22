@@ -28,11 +28,13 @@ define(
 			createProperty: function (name, property) {
 				var _self = this;
 
-				this.properties[name] = property.subscribe(function () {
+				var observable = new Observable(property);
+
+				this.properties[name] = observable.subscribe(function () {
 					_self.isDirty.set(true);
 				}, "dirty");
 
-				this[name] = property;
+				this[name] = observable;
 			},
 			deleteProperty: function (name) {
 				this[name].unsubscribe(this.properties[name]);

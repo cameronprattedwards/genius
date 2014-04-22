@@ -2,6 +2,12 @@ define([], function () {
 	function dirtyCollectionBase (oldVal, newVal, removed, added) {
 		var _self = this,
 			i = 0;
+		if (!this.added) {
+			this.added = [],
+			this.removed = [];
+		}
+		var added = this.added,
+			removed = this.removed;
 
 		for ( ; i < newVal.length; i++) {
 			if (oldVal[i] == newVal[i])

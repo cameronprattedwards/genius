@@ -9,18 +9,20 @@ define(["../Directive", "./splice"], function (Directive, splice) {
 			}
 
 			function template(model) {
-				return this.children.map(function (child) {
-					return child.compile(model);
-				});
+				var output = [];
+				for (var i = 0; i < this.children.length; i++) {
+					output.push.apply(output, this.children[i].compile(model));
+				}
+				return output;
 			}
 
-			var compiledChildren = template(model);
+			var compiledChildren = template.call(this, model);
 
 			function update(value) {
-				var offset = Array.prototype.indexOf.call(parent, this.compiledOpen) + 1;
+				var offset = Array.prototype.indexOf.call(parent.childNodes, _self.compiledOpen) + 1;
 
 				if (value) {
-					splice.call(this, [parent, offset, 0].concat(compiledChildren));
+					splice.apply(this, [parent, offset, 0].concat(compiledChildren));
 				} else {
 					splice(parent, offset, _self.children.length);
 				}
@@ -28,12 +30,16 @@ define(["../Directive", "./splice"], function (Directive, splice) {
 
 			conditional.subscribe(update);
 
-			var output = [this.compiledOpen = this.open.compile(model)];
+			var output = this.open.compile(model);
+
+			this.compiledOpen = output[0];
 
 			if (conditional.get())
 				output.push.apply(output, compiledChildren);
 
-			output.push(this.compiledClose = this.close.compile(model));
+			var compiledCloseArray = this.close.compile(model);
+			this.compiledClose = compiledCloseArray[0];
+			output.push(this.compiledClose);
 
 			return output;
 		}

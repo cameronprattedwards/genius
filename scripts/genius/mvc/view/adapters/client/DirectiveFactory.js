@@ -1,6 +1,6 @@
-define(["./BestNodeGetter"], function (bestNode) {
+define(["./BestNodeGetter", "./Comment"], function (bestNode, Comment) {
 	return function (Directive) {
-		return function (html, model) {
+		return function (html, bestNode) {
 			var dir = new Directive(),
 				openingTag = /^\{\{#([^\}]+)\}\}/.exec(html[0])[1];
 
@@ -15,12 +15,13 @@ define(["./BestNodeGetter"], function (bestNode) {
 
 			var closingTag = new RegExp("^\{\{\/" + dir.name + "\}\}");
 
-			while(html[0].length && !closingTag.test(html)) {
-				dir.splice.apply(dir, [dir.children.length + 1, 0].concat(bestNode(html, model)));
+			html[0] = html[0].slice(html[0].search("}}") + 2, html[0].length);
+
+			while(html[0].length && !closingTag.test(html[0])) {
+				dir.children.push.apply(dir.children, bestNode(html));
 			}
 
-			dir.children.push(dir.close);
-			dir.children.unshift(dir.open);
+			html[0] = html[0].slice(html[0].search("}}") + 2);
 
 			return [dir];
 		}

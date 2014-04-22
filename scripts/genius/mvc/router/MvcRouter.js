@@ -10,6 +10,9 @@ define(["./Router"], function (baseRouter) {
 		},
 		setLocation: function () {
 			return baseRouter.setLocation.apply(baseRouter, arguments);
+		},
+		setBaseNode: function (node) {
+			this.baseNode = node;
 		}
 	};
 

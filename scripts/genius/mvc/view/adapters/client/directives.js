@@ -1,6 +1,15 @@
-define(["directives/Each", "directives/If"], function (Each, If) {
+define([
+	"./directives/Each", 
+	"./directives/If", 
+	"./directives/Value", 
+	"./directives/With", 
+	"./directives/Event"
+	], function (Each, If, Value, With, Event) {
 	return {
 		"if": If,
-		"each": Each
+		"each": Each,
+		"value": Value,
+		"with": With,
+		"event": Event
 	};
 });
