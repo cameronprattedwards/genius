@@ -1,5 +1,8 @@
 define(["../Directive", "./splice"], function (Directive, splice) {
 	return Directive.extend({
+		setUp: function () {
+			
+		},
 		compile: function (model, parent) {
 			var indexOf = Array.prototype.indexOf.call,
 				cached = [],

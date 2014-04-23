@@ -13,7 +13,19 @@ define(["./Node"], function (Node) {
 				return child.compile(model, parent);
 			});
 
+			var args = [parent, model];
+			for (var i = 0; i < this.args.length; i++) {
+				with (model) {
+					args.push(eval(this.args[i]));
+				}
+			}
+
+			this.setUp.apply(this, args);
+
 			return this.compiledChildren;
+		},
+		setUp: function () {
+
 		}
 	});
 });

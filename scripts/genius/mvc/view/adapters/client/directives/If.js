@@ -1,5 +1,17 @@
 define(["../Directive", "./splice"], function (Directive, splice) {
 	return Directive.extend({
+		setUp: function (parent, model, conditional) {
+			function template(model) {
+				var output = [];
+				for (var i = 0; i < this.children.length; i++) {
+					output.push.apply(output, this.children[i].compile(model));
+				}
+				return output;
+			}
+
+			var compiledChildren = template.call(this, model);
+		}
+
 		compile: function (model, parent) {
 			var _self = this,
 				conditional;

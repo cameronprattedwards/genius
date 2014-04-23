@@ -78,13 +78,7 @@ define([
 				var returned = this.children[i].compile(model, el);
 
 				for (var x = 0; x < returned.length; x++) {
-					console.log("ret ", returned[x]);
-					try {
-						el.appendChild(returned[x]);
-					} catch (e) {
-						console.log(e);
-						throw e;
-					}
+					el.appendChild(returned[x]);
 				}
 			}
 			return [el];
