@@ -1,4 +1,4 @@
-define(["genius/utils", "genius/utils/deferred"], function (deferred) {
+define(["genius/utils", "genius/utils/deferred"], function (utils, deferred) {
 	var templates = {};
 
 	return function (url) {
