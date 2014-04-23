@@ -1,4 +1,4 @@
-define(["./HTMLElement", "./BestNodeGetter"], function (HTMLElement, bestNode) {
+define(["./HTMLElement", "./bestNode"], function (HTMLElement, bestNode) {
 	return function (html, bestNode) {
 		var el = new HTMLElement();
 
@@ -55,7 +55,7 @@ define(["./HTMLElement", "./BestNodeGetter"], function (HTMLElement, bestNode) {
 
 			var i = 0;
 			while (html[0].length && !closingTag.test(html[0])) {
-				var children = bestNode(html);
+				var children = require("./bestNode")(html);
 				el.children.push.apply(el.children, children);
 			}
 

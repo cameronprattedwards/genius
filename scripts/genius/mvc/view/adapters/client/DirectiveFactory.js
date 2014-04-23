@@ -1,4 +1,4 @@
-define(["./BestNodeGetter", "./Comment"], function (bestNode, Comment) {
+define(["./bestNode", "./Comment"], function (bestNode, Comment) {
 	return function (Directive) {
 		return function (html, bestNode) {
 			var dir = new Directive(),
@@ -18,7 +18,7 @@ define(["./BestNodeGetter", "./Comment"], function (bestNode, Comment) {
 			html[0] = html[0].slice(html[0].search("}}") + 2, html[0].length);
 
 			while(html[0].length && !closingTag.test(html[0])) {
-				dir.children.push.apply(dir.children, bestNode(html));
+				dir.children.push.apply(dir.children, require("./bestNode")(html));
 			}
 
 			html[0] = html[0].slice(html[0].search("}}") + 2);
