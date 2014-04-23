@@ -7,6 +7,19 @@ define(["./utils/deferred"], function (deferred) {
 	}
 
 	return {
+		map: function (array, callback) {
+			var output = [];
+			for (var i = 0; i < array.length; i++) {
+				output.push(callback.call(array[i], array[i], i));
+			}
+			return output;
+		},
+		flatten: function (arrayOfArrays) {
+			var output = [];
+			for (var i = 0; i < arrayOfArrays.length; i++)
+				output.push.apply(output, arrayOfArrays[i]);
+			return output;
+		},
 		extend: function (obj1, obj2) {
 			var orig  = arguments[0];
 
