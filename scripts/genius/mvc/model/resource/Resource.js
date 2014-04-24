@@ -1,11 +1,25 @@
 define(["../dirt/Class", "genius/utils", "genius/Backend", "./GenericCollection", "../dirt/setUtils"], function (Class, utils, Backend, Collection, setUtils) {
+	var initializing = false;
+
 	var Resource = Class.extend({
 		init: function () {
+			if (initializing)
+				return;
+
 			for (var x in this.properties) {
 				this[x] = this.properties[x].getInstance();
 			}
 
 			Class.prototype.init.apply(this, arguments);
+		},
+		toJson: function () {
+			var output = {};
+
+			for (var x in this.properties) {
+				output[x] = this[x].get();
+			}
+
+			return output;
 		},
 		$del: function (parent) {
 			Backend.del(this.url(parent), this[this.uniqKey].get());
@@ -29,7 +43,7 @@ define(["../dirt/Class", "genius/utils", "genius/Backend", "./GenericCollection"
 			var _self = this,
 				promise;
 
-			if (this.isNew()) {
+			if (this.isNew.get()) {
 				promise = Backend.create(this.url(parent), this.toJson());
 			} else {
 				promise = Backend.update(this.url(parent), this.dirtyProperties());
@@ -69,7 +83,7 @@ define(["../dirt/Class", "genius/utils", "genius/Backend", "./GenericCollection"
 			return output;
 		},
 		$query: function () {
-			var output = new Collection(this)();
+			var output = new (Collection(this))();
 			var promise = Backend.read(this.prototype.url());
 			promise.success(function (value) {
 				setUtils.current = setUtils.server;
@@ -81,8 +95,6 @@ define(["../dirt/Class", "genius/utils", "genius/Backend", "./GenericCollection"
 			return output;
 		}
 	};
-
-	var initializing = false;
 
 	Resource.extend = function (properties) {
 		initializing = true;
