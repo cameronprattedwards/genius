@@ -23,7 +23,6 @@ define(
 				});
 
 				this.isNew = new Observable(setUtils.current.isNew);
-
 			},
 			createProperty: function (name, property) {
 				var _self = this;
@@ -39,6 +38,14 @@ define(
 			deleteProperty: function (name) {
 				this[name].unsubscribe(this.properties[name]);
 				delete this[name];
+			},
+			dirtyProperties: function () {
+				var output = {};
+				for (var x in this) {
+					if (this.hasOwnProperty(x) && x.isDirty && x.isDirty.get())
+						output[x] = this[x].get()
+				}
+				return output;
 			}
 		});
 
