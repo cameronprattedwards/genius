@@ -17,9 +17,9 @@ function factory(id, text, dueDate) {
 }
 
 var toDos = [
-	factory("Eat", new Date(), 1),
-	factory("Sleep", new Date(new Date().getTime() + 86400000), 2),
-	factory("Seek shelter", new Date(new Date().getTime() + 3600000), 3)
+	factory(1, "Eat", new Date()),
+	factory(2, "Sleep", new Date(new Date().getTime() + 86400000)),
+	factory(3, "Seek shelter", new Date(new Date().getTime() + 3600000))
 ];
 
 var router = express.Router();
@@ -30,16 +30,34 @@ router.param('todo', function (req, resp, next, id) {
 	});
 
 	req.todo = todo;
+	next();
 })
 
+// router.use(function (req, resp, next) {
+// 	console.log("router", req.method, req.url);
+// 	next();
+// });
+
+router.get("/todos", function (req, resp) {
+	resp.send(JSON.stringify(toDos));
+});
+
+router.get("/todos/:id", function (req, resp, next) {
+	var obj = toDos.filter(function (val) { return val.id == req.params.id })[0];
+
+	var str = JSON.stringify(obj);
+	resp.send(str);
+});
+
 express()
-    .use(connect.static(__dirname))
+	.use(function (req, resp, next) {
+		console.log(req.method, req.url);
+		next();
+	})
     .use('/api', router)
+    .use(connect.static(__dirname))
 	.listen(port);
 
-router.get("/api/todos/:todo", function (req, resp) {
-	resp.write(JSON.stringify(req.todo));
-	console.log(arguments);
-});
+
 
 
