@@ -1,4 +1,4 @@
-define(["./HTMLElement", "./bestNode"], function (HTMLElement, bestNode) {
+define(["./HTMLElement", "./bestNode", "require"], function (HTMLElement, bestNode, require) {
 	return function (html, bestNode) {
 		var el = new HTMLElement();
 

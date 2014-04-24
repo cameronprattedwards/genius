@@ -1,4 +1,4 @@
-define(["./bestNode", "./Comment"], function (bestNode, Comment) {
+define(["./bestNode", "./Comment", "require"], function (bestNode, Comment, require) {
 	return function (Directive) {
 		return function (html, bestNode) {
 			var dir = new Directive(),
