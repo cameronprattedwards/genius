@@ -20,7 +20,7 @@ define(["genius/utils/deferred"], function (deferred) {
 				if (xhr.status == 200)
 					def.resolve(JSON.parse(xhr.responseText));
 				else
-					def.reject(obj.statusText);
+					def.reject(xhr.statusText);
 			}
 		}
 
