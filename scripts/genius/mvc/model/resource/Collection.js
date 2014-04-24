@@ -29,6 +29,14 @@ define(["../dirt/Collection", "genius/Backend", "../dirt/setUtils"], function (C
 				setUtils.current = setUtils.client;
 				_self.isDirty.set(false);
 			});
+
+			promise.fail(function () {
+				console.log("Req gone wrong: ", arguments);
+			});
+
+			promise.always(function () {
+				console.log("Req done: ", arguments);
+			});
 			return promise;
 		}
 	});
