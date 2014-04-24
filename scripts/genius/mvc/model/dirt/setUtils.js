@@ -56,7 +56,8 @@ define([], function () {
 		markDirtyCollection: function (oldVal, newVal) {
 			dirtyCollectionBase.call(this, oldVal, newVal, [], []);
 			this.isDirty.set(false);
-		}
+		},
+		isNew: false
 	};
 
 	var client = {
@@ -66,7 +67,8 @@ define([], function () {
 		markDirtyCollection: function (oldVal, newVal) {
 			dirtyCollectionBase.call(this, oldVal, newVal, this.removed, this.added);
 			this.isDirty.set(!this.removed.length && !this.added.length);
-		}
+		},
+		isNew: true
 	};
 	
 	return {
