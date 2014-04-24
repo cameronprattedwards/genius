@@ -21,10 +21,10 @@ define(["./RouteInterpreter", "./RouteCallbackFactory"], function (RouteInterpre
 			history.pushState({}, "", url);
 			callback.call(this);
 		},
-		registerRoute: function (pattern, callback) {
-			var routeCallback = RouteCallbackFactory.create(pattern, callback);
+		registerRoute: function (pattern, fCallback) {
+			var routeCallback = RouteCallbackFactory.create(pattern, fCallback);
 			callbacks.push(routeCallback);
-			callback.call(router);
+			callback.call(this);
 		}
 	};
 
