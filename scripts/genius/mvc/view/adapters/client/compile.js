@@ -1,15 +1,11 @@
-define(["genius/utils", "./Template"], function (utils, Template) {
+define(["./directives/Template", "./Comment"], function (Template, Comment) {
 	return function (url, node, model) {
-		var promise = utils.ajax({
-			url: url
-		});
+		var promise = TemplateCache(url);
 
-		promise.success(function (html) {
-			var tmpl = new Template(html, node, model);
-		});
-
-		promise.fail(function () {
-			console.log("AJAX failed", arguments);
+		promise.success(function (pseudoDom) {
+			var children = pseudoDom.compile(model, parent);
+			for (var i = 0; i < children.length; i++)
+				node.appendChild(children[i]);
 		});
 	}
 });
