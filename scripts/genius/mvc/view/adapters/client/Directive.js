@@ -11,7 +11,7 @@ define(["./Node", "./directives/splice"], function (Node, splice) {
 		splice: function (index, length) {
 			var offset = Array.prototype.indexOf.call(this.parent.childNodes, this.compiledOpen) + 1;
 			var args = Array.prototype.slice.call(arguments, 2);
-			return splice.apply(this, [index + offset, length].concat(args));
+			return splice.apply(this, [this.parent, index + offset, length].concat(args));
 		},
 		compile: function (model, parent) {
 			this.parent = parent;
