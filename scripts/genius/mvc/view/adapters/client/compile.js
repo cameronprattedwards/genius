@@ -1,4 +1,4 @@
-define(["./directives/Template", "./Comment"], function (Template, Comment) {
+define(["./TemplateCache"], function (TemplateCache) {
 	return function (url, node, model) {
 		var promise = TemplateCache(url);
 
