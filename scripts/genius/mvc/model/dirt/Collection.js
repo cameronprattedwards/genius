@@ -4,10 +4,10 @@ define(
 		var methods = {
 			init: function () {
 				var _self = this;
-				Collection.prototype.init.apply(this, arguments);
 				this.isDirty = new Observable(false);
 				this.isDirty.subscribe(function () { _self.fire("dirty"); });
 				this.subscriptions = [];
+				Collection.prototype.init.apply(this, arguments);
 			}
 		};
 
