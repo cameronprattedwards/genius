@@ -7,7 +7,9 @@ define([
 	return BaseCollection.extend({
 		init: function () {
 			BaseCollection.prototype.init.apply(this, arguments);
+
 			var _self = this;
+
 			this.computedLength = new Computed([this], function () {
 				return _self.length;
 			});
