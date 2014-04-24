@@ -28,7 +28,7 @@ define(["../Directive", "./splice"], function (Directive, splice) {
 				var entry = array[i],
 					entryInCached,
 					entryEls,
-					domIndex = i * this.children;
+					domIndex = i * this.children.length;
 
 				if (this.cached[i] === entry)
 					continue;
