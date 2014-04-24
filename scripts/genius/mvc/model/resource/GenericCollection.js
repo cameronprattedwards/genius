@@ -6,6 +6,9 @@ define(["./Collection", "genius/utils"], function (Collection, utils) {
 			},
 			addNew: function () {
 				return this.push(new T().valueOf());
+			},
+			url: function () {
+				return T.prototype.url();
 			}
 		});
 	}
