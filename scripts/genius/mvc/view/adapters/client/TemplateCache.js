@@ -3,6 +3,7 @@ define(["genius/utils", "genius/utils/deferred"], function (utils, deferred) {
 
 	return function (url) {
 		var output = deferred();
+
 		if (templates[url]) {
 			output.resolve(templates[url]);
 		} else {
@@ -17,6 +18,7 @@ define(["genius/utils", "genius/utils/deferred"], function (utils, deferred) {
 				output.reject.apply(output, arguments);
 			});
 		}
+
 		return output.promise();
 	}
 });
