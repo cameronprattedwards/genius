@@ -2,10 +2,10 @@ define([], function () {
 	return function (base) {
 		return {
 			init: function () {
-				base.prototype.init.apply(this, arguments);
 				this.listeners = {};
 				this.allListeners = {};
 				this.index = 0;
+				base.prototype.init.apply(this, arguments);
 			},
 			subscribe: function (callback, evt) {
 				if (!this.listeners[evt])
