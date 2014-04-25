@@ -1,0 +1,11 @@
+<h1>To Dos: {{toDos.computedLength}}</h1>
+<ul>
+	{{#each toDos}}
+		<li>{{text}} Due: {{dueDate}}</li>
+	{{/each}}
+	{{#with unsaved}}
+		<li><input type="text" {{value text}}/> {{dueDate}} {{text}}</li>
+	{{/with}}
+</ul>
+<p><button {{event "click" save.bind(model)}}>Save</button></p>
+{{#template "/scripts/app/views/index/garbage.html" model}}{{/template}}

@@ -1,5 +1,5 @@
 // Karma configuration
-// Generated on Fri Dec 20 2013 15:36:00 GMT-0700 (Mountain Standard Time)
+// Generated on Wed Apr 09 2014 19:52:20 GMT-0400 (EDT)
 
 module.exports = function(config) {
   config.set({
@@ -7,15 +7,17 @@ module.exports = function(config) {
     // base path, that will be used to resolve files and exclude
     basePath: '',
 
+
     // frameworks to use
-    frameworks: ['jasmine'],
+    frameworks: ['jasmine', 'requirejs'],
 
 
     // list of files / patterns to load in the browser
     files: [
-      'genius.js',
-      'test/genius-base-spec.js',
-      'test/genius-spec.js'
+      'scripts/test-main.js',
+      {pattern: 'scripts/genius/*.js', included: false},
+      {pattern: 'scripts/genius/base/*.js', included: false},
+      {pattern: 'scripts/genius/base/test/*.js', included: false}
     ],
 
 
@@ -40,7 +42,7 @@ module.exports = function(config) {
 
     // level of logging
     // possible values: config.LOG_DISABLE || config.LOG_ERROR || config.LOG_WARN || config.LOG_INFO || config.LOG_DEBUG
-    logLevel: config.LOG_INFO,
+    logLevel: config.LOG_DEBUG,
 
 
     // enable / disable watching file and executing tests whenever any file changes
@@ -51,11 +53,11 @@ module.exports = function(config) {
     // - Chrome
     // - ChromeCanary
     // - Firefox
-    // - Opera
-    // - Safari (only Mac)
+    // - Opera (has to be installed with `npm install karma-opera-launcher`)
+    // - Safari (only Mac; has to be installed with `npm install karma-safari-launcher`)
     // - PhantomJS
-    // - IE (only Windows)
-    browsers: ['Chrome'],   //, 'Firefox', 'Safari', 'IE'
+    // - IE (only Windows; has to be installed with `npm install karma-ie-launcher`)
+    browsers: ['Chrome'],
 
 
     // If browser does not capture in given timeout [ms], kill it
