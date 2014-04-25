@@ -2,7 +2,7 @@ requirejs.config({
 	baseUrl: "scripts"
 });
 
-require(["genius/dependencies/test"], function () {
+require(["genius/dependencies/real"], function () {
 	require([
 		"genius/mvc/router/MVCRouter",
 		"app/controllers/IndexController", 
