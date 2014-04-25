@@ -3,6 +3,7 @@ define(["genius/mvc/model/base/Class", "./ToDo", "./ToDoCollection", "genius/mvc
 		init: function () {
 			this.toDos = new ToDoCollection();
 			this.unsaved = new Observable(new ToDo());
+			this.toDos.$poll();
 		},
 		save: function () {
 			this.toDos.push(this.unsaved.get());
