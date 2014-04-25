@@ -1,11 +1,11 @@
 define([
 	"genius/mvc/controller/Controller",
-	"../models/ViewModelFactory"
+	"../models/ViewModel"
 	], 
-	function (Controller, ViewModelFactory) {
+	function (Controller, ViewModel) {
 		return Controller.extend({
 			index: function () {
-				var model = ViewModelFactory.dummy();
+				var model = new ViewModel();
 				window.model = model;
 
 				this.render("/scripts/app/views/index/index.html", model);
