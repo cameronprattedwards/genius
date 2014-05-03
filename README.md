@@ -25,4 +25,8 @@ At a really basic level, Genius should make it a cinch to set up an MVC app.
 
 Genius uses dependency injection by RequireJS to help keep your code clean and concise, and out of global scope.
 
-Let's do a super basic example.
+To develop on this repo, you'll need to do a few things:
+
+1. `git clone https://github.com/cameronprattedwards/genius.git`
+1. `npm install`
+
