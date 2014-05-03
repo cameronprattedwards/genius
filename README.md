@@ -15,7 +15,8 @@ root_dir
 	│		│	└ public
 	│		├ config.js
 	│		└ main.js
-	└ domain
+	├ domain
+	└ node_modules
 ```
 
 All of your application-specific code goes into the "app" directory. All of your business logic goes into
@@ -30,3 +31,14 @@ To develop on this repo, you'll need to do a few things:
 1. `git clone https://github.com/cameronprattedwards/genius.git`
 1. `npm install`
 
+You'll want a test app to play around with so you can know which features you'll want to add to Genius.
+
+So, actually, set up your directory structure as shown above.
+
+1. `cd node_modules`
+1. `git clone https://github.com/cameronprattedwards/genius.git`
+
+To make a web app, `cd path/to/app_directory/web/controllers`.
+Create a file that looks like this:
+
+Jeez, louise! Just read the source!

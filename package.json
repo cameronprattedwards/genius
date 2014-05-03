@@ -1,6 +1,6 @@
 {
   "name": "genius",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "A loosely-coupled, implementation-agnostic MVC framework",
   "main": "config.js",
   "scripts": {
