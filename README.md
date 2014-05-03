@@ -7,15 +7,15 @@ If you want to use Genius, I recommend you structure your app like this:
 
 ```
 root_dir
-	L app
-		L web
-			L controllers
-			L views
-			L www
-				L public
-			L config.js
-			L main.js
-	L domain
+	├ app
+	│	└ web
+	│		├ controllers
+	│		├ views
+	│		├ www
+	│		│	└ public
+	│		├ config.js
+	│		└ main.js
+	└ domain
 ```
 
 All of your application-specific code goes into the "app" directory. All of your business logic goes into
