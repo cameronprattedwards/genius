@@ -1,7 +1,7 @@
 Genius
 ======
 
-Genius is an MVC framework in the truest sense of the word. It is built on the idea that, first and foremost, makes domain modeling easy.
+Genius is an MVC framework in the truest sense of the word. It is built on the idea that, first and foremost, domain modeling should be easy. And your apps should be polymorphic - that is, you should be able to use the same source on both the client and the server.
 
 If you want to use Genius, I recommend you structure your app like this:
 
