@@ -5,7 +5,6 @@ define(
 
 		var holder = methods.init;
 
-
 		var methods = o(methods).extend({
 			init: function (properties) {
 				holder.apply(this, arguments);
@@ -47,6 +46,13 @@ define(
 						output[x] = this[x].get()
 				}
 				return output;
+			},
+			fire: function () {
+				for (var evt in this.listeners) {
+					for (var callback in this.listeners[evt]) {
+						this.listeners[evt][callback].call(this, this);
+					}
+				}
 			}
 		});
 

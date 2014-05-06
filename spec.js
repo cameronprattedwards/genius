@@ -9,7 +9,11 @@ requirejs.config({
 suite("Garbago", function (done) {
 	setup(function (done) {
 		console.log("setting up");
-		requirejs(["assert", "utils/spec/array"], function (assert) {
+		requirejs([
+			"utils/spec/array",
+			"utils/spec/fs",
+			"utils/spec/deferred"
+			], function () {
 			done();
 		});
 	});

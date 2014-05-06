@@ -9,8 +9,6 @@ define(["../observable/Observable", "./setUtils"], function (Observable, setUtil
 			this.originalValue = this.value;
 		},
 		set: function (value) {
-			if (value && value.search && value.search("sucks") !== -1)
-				console.log("setting", value);
 			var oldValue = this.get();
 			Observable.prototype.set.apply(this, arguments);
 			setUtils.current.markDirty.call(this, oldValue, value);

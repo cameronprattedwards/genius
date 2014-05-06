@@ -10,6 +10,19 @@ define([], function () {
 			return str.substring(0, index)
 			+ replacement
 			+ str.substring(index + length, str.length);
+		},
+		truncate: function (length) {
+			var str = this.string;
+
+			if (str.length > length && str.charAt(length) !== " ")
+				length = str.lastIndexOf(" ");
+
+			var output = str.substring(0, length);
+			if (str.length > length) {
+				output += "...";
+			}
+
+			return output;
 		}
 	};
 

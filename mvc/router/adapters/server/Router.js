@@ -65,6 +65,8 @@ define([
 
 				var action = params.action + "Action";
 
+				params = o(params).omit("controller", "action");
+
 				if (controller[action])
 					return controller[action](params);
 				else
