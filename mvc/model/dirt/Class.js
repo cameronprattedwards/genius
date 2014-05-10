@@ -9,7 +9,7 @@ define(
 			init: function (properties) {
 				holder.apply(this, arguments);
 
-				this.properties = {};
+				this.propertySubscriptions = {};
 
 				for (var x in properties) {
 					this.createProperty(x, properties[x]);
@@ -29,14 +29,14 @@ define(
 
 				var observable = new Observable(property);
 
-				this.properties[name] = observable.subscribe(function () {
+				this.propertySubscriptions[name] = observable.subscribe(function () {
 					_self.isDirty.set(true);
 				}, "dirty");
 
 				this[name] = observable;
 			},
 			deleteProperty: function (name) {
-				this[name].unsubscribe(this.properties[name]);
+				this[name].unsubscribe(this.propertySubscriptions[name]);
 				delete this[name];
 			},
 			dirtyProperties: function () {

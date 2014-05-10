@@ -29,6 +29,7 @@ define([], function () {
 				var exception = arguments[i];
 				delete output[exception];
 			}
+			return output;
 		}
 	};
 

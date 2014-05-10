@@ -9,8 +9,6 @@ define(["mongojs", "genius/config", "genius/utils/deferred"], function (mongojs,
 	MongoAdapter.prototype = {
 		create: function (collectionName, object) {
 			var output = deferred();
-			if (object._id)
-				object._id = mongojs.ObjectId(object._id);
 
 			db[collectionName].insert(object, function (err, savedObject) {
 				if (err)

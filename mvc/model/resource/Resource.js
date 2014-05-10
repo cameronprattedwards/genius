@@ -22,8 +22,14 @@ define(["../dirt/Class", "genius/utils/object", "genius/Backend", "./GenericColl
 			return output;
 		},
 		$del: function (parent) {
-			Backend.del(this.url(parent), this[this.uniqKey].get());
-			this.fire("delete");
+			var _self = this;
+
+			var promise = Backend.del(this.url(parent), this[this.uniqKey].get());
+			promise.success(function () {
+				_self.fire("delete");
+			});
+
+			return promise;
 		},
 		$populateCollection: function (collection) {
 			return collection.$poll(this);
