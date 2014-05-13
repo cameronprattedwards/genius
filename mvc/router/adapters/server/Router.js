@@ -68,7 +68,7 @@ define([
 				params = o(params).omit("controller", "action");
 
 				if (controller[action])
-					return controller[action](params);
+					return controller[action](params).fail(function (error) { controller.render("app/views/error.html", null, error); });
 				else
 					return next();
 			});
