@@ -1,0 +1,29 @@
+{
+  "name": "genius",
+  "version": "0.0.0",
+  "homepage": "https://github.com/cameronprattedwards/genius",
+  "authors": [
+    "Cameron Edwards <cameronprattedwards@gmail.com>"
+  ],
+  "description": "A modular MVC app",
+  "main": "model/Class.js",
+  "keywords": [
+    "MVC",
+    "Model",
+    "View",
+    "Controller",
+    "Domain",
+    "Modelling"
+  ],
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "requirejs": null
+  }
+}
