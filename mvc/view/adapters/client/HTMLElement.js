@@ -1,4 +1,4 @@
-var root = "genius/mvc/model/observable";
+var root = "genius/model/observable";
 define([
 	"./Node", 
 	root + "/Computed", 

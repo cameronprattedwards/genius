@@ -28,6 +28,7 @@
     "mongojs": "*",
     "passport": "*",
     "passport-http": "*",
-    "requirejs": "*"
+    "requirejs": "*",
+    "bower": "*"
   }
 }

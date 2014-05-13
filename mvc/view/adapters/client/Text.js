@@ -1,4 +1,4 @@
-var root = "genius/mvc/model/observable";
+var root = "genius/model/observable";
 
 define(["./Node", root + "/Computed", root + "/Wrapper"], function (Node, Computed, Wrapper) {
 	return Node.extend({

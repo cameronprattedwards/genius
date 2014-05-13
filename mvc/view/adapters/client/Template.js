@@ -1,4 +1,4 @@
-define(["genius/mvc/model/base/Class", "./BestNodeGetter"], function (Class, bestNode) {
+define(["genius/model/base/Class", "./BestNodeGetter"], function (Class, bestNode) {
 	return Class.extend({
 		init: function (html, root, model) {
 			this.children = [];

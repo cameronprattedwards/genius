@@ -6,6 +6,6 @@ define("genius/view/compile", ["genius/mvc/view/adapters/server/compile"], funct
 	return compile;
 });
 
-define("genius/Backend", ["genius/mvc/model/adapters/mongo"], function (mongo) {
+define("genius/Backend", ["genius/model/adapters/mongo"], function (mongo) {
 	return mongo;
 });

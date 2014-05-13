@@ -1,4 +1,4 @@
-define(["genius/mvc/model/observable/Observable"], function (Observable) {
+define(["genius/model/observable/Observable"], function (Observable) {
 	return function (initialValue) {
 		var inner = new Observable(initialValue);
 		var output = function () {

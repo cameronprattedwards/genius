@@ -1,4 +1,4 @@
-define(["genius/mvc/model/base/Wrapper", "genius/mvc/model/observable/Computed"], function (Wrapper, Computed) {
+define(["genius/model/base/Wrapper", "genius/model/observable/Computed"], function (Wrapper, Computed) {
 	function Factory() {};
 
 	Factory.prototype = {
