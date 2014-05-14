@@ -1,6 +1,6 @@
 define([
 	"express", 
-	"genius/base/Class", 
+	"genius/model/base/Class", 
 	"module", 
 	"genius/mvc/controller/registry",
 	"genius/utils/object",

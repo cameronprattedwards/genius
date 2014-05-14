@@ -1,4 +1,4 @@
-define(["scripts/genius/base/Class"], function (Class) {
+define(["scripts/genius/model/base/Class"], function (Class) {
 	// describe("Class", function () {
 	// 	console.log("outer"); // asdfasdfasdf 
 	// 	it ("is something", function () {

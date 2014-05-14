@@ -1,4 +1,4 @@
-define(["genius/base/Class", "genius/utils/deferred", "require", "./processHtml", "./registry"], function (Class, deferred, require, processHtml, registry) {
+define(["genius/model/base/Class", "genius/utils/deferred", "require", "./processHtml", "./registry"], function (Class, deferred, require, processHtml, registry) {
 	var Directive = Class.extend({
 		init: function (content) {
 			this.content = content;

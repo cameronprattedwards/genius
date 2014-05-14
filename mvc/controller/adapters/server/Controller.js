@@ -1,4 +1,4 @@
-define(["genius/base/Class", "genius/view/compile", "./registry"], function (Class, compile, registry) {
+define(["genius/model/base/Class", "genius/view/compile", "./registry"], function (Class, compile, registry) {
 	var Controller = Class.extend({
 		init: function (req, resp) {
 			this.req = req;
