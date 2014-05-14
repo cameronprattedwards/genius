@@ -1,4 +1,4 @@
-define(["genius/utils", "genius/utils/deferred", "./PseudoDomFactory"], function (utils, deferred, PseudoDomFactory) {
+define(["genius/utils/ajax", "genius/utils/deferred", "./PseudoDomFactory"], function (ajax, deferred, PseudoDomFactory) {
 	var templates = {};
 
 	return function (url) {
@@ -7,7 +7,7 @@ define(["genius/utils", "genius/utils/deferred", "./PseudoDomFactory"], function
 		if (templates[url]) {
 			output.resolve(templates[url]);
 		} else {
-			var promise = utils.ajax({ url: url });
+			var promise = ajax({ url: url });
 
 			promise.success(function (html) {
 				templates[url] = PseudoDomFactory(html);

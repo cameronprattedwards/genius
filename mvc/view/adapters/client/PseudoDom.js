@@ -1,4 +1,4 @@
-define(["genius/utils"], function (utils) {
+define(["genius/utils/array"], function (utils, a) {
 	function PseudoDom() {
 		this.children = [];
 	}
@@ -9,9 +9,9 @@ define(["genius/utils"], function (utils) {
 				return child.compile(model, parent);
 			}
 
-			var mapped = utils.map(this.children, callback);
+			var mapped = a(this.children).map(callback);
 
-			var flattened = utils.flatten(mapped);
+			var flattened = a(mapped).flatten();
 
 			return flattened;
 		}

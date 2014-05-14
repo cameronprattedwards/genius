@@ -13,6 +13,12 @@ define([], function () {
 
 			return output;
 		},
+		flatten: function () {
+			var output = [];
+			for (var i = 0; i < this.array.length; i++)
+				output.push.apply(output, this.array[i]);
+			return output;
+		},
 		filter: function (callback) {
 			var output = [];
 

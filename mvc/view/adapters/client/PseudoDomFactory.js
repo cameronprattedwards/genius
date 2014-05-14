@@ -1,4 +1,4 @@
-define(["genius/utils", "./PseudoDom", "./bestNode"], function (utils, PseudoDom, bestNode) {
+define(["./PseudoDom", "./bestNode"], function (PseudoDom, bestNode) {
 	return function (html) {
 		var pseudoDom = new PseudoDom(),
 			children = pseudoDom.children,
