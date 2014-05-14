@@ -23,16 +23,20 @@ define([], function () {
 				}
 			// I'm not subscribed and I should be.
 			} else {
-				var id = newVal[i].subscribe(function (newVal) {
-					_self.isDirty.set(true);
-				}, "dirty");
+				if (newVal[i].subscribe)
+					var id = newVal[i].subscribe(function (newVal) {
+						_self.isDirty.set(true);
+					}, "dirty");
+				else
+					var id = 0;
 				added.push(newVal[i]);
 			}
 
 			// I'm subscribed and I shouldn't be.
 			if (oldVal.length > i && newVal.indexOf(oldVal[i]) == -1) {
 				removed.push(oldVal[i]);
-				oldVal[i].unsubscribe(this.subscriptions[i]);
+				if (oldVal[i].unsubscribe)
+					oldVal[i].unsubscribe(this.subscriptions[i]);
 				this.subscriptions.splice(i, 1);
 				oldVal.splice(i, 1);
 			}
