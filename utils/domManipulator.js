@@ -5,7 +5,7 @@ define([], function () {
 
 	D.prototype = {
 		addClass: function (className) {
-			var current = this.el.getAttribute("class");
+			var current = this.el.getAttribute("class") || "";
 
 			if (!current || current.search(className) == -1) {
 				this.el.setAttribute("class", current + " " + className);
