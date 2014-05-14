@@ -12,7 +12,11 @@ define([], function () {
 			return this;
 		},
 		removeClass: function (className) {
-			this.el.setAttribute("class", this.el.getAttribute("class").replace(className, ""));
+			var current = this.el.getAttribute("class");
+	
+			if (current)
+				this.el.setAttribute("class", current.replace(className, ""));
+	
 			return this;
 		}
 	};
