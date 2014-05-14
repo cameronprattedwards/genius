@@ -2,12 +2,14 @@ define(["../dirt/Class", "genius/utils/object", "genius/Backend", "./GenericColl
 	var initializing = false;
 
 	var Resource = Class.extend({
-		init: function () {
+		init: function (props) {
 			if (initializing)
 				return;
 
 			for (var x in this.properties) {
 				this[x] = this.properties[x].getInstance();
+				if (props[x])
+					this[x].set(props[x]);
 			}
 
 			Class.prototype.init.apply(this, arguments);
