@@ -16,7 +16,7 @@ define(["./Node", root + "/Computed", root + "/Wrapper"], function (Node, Comput
 				function update() {
 					var output = "";
 					for (var i = 0; i < pieces.length; i++)
-						output += pieces[i].get();
+						output += pieces[i].valueOf();
 					return output;
 				};
 
