@@ -5,7 +5,7 @@ define(["./Router"], function (baseRouter) {
 		registerRoute: function (url, obj) {
 			baseRouter.registerRoute(url, function (routeParams) {
 				var controller = new obj.controller();
-				controller[obj.action].call(controller, routeParams);
+				controller[obj.action + "Action"].call(controller, routeParams);
 			});
 		},
 		setLocation: function () {
