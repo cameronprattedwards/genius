@@ -1,4 +1,4 @@
-define(["genius/utils/array"], function (utils, a) {
+define(["genius/utils/array"], function (a) {
 	function PseudoDom() {
 		this.children = [];
 	}
