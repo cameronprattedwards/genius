@@ -12,7 +12,10 @@ define(
 				this.propertySubscriptions = {};
 
 				for (var x in properties) {
-					this.createProperty(x, properties[x]);
+					if (!this.hasOwnProperty(x))
+						this.createProperty(x, properties[x]);
+					else
+						this[x].set(properties[x]);
 				}
 
 				var _self = this;
