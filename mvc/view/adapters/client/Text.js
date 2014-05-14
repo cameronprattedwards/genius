@@ -28,7 +28,8 @@ define(["./Node", root + "/Computed", root + "/Wrapper"], function (Node, Comput
 						with (model) {
 							observable = eval(regex.exec(strCopy)[1]);
 						}
-						dependencies.push(observable);
+						if (observable.subscribe)
+							dependencies.push(observable);
 						pieces.push(observable);
 						strCopy = strCopy.slice(strCopy.search("}}") + 2, strCopy.length);
 					} else {
