@@ -1,4 +1,4 @@
-define([], function () {
+define(["./object", "./deferred"], function (o, deferred) {
 	function XHR() {
 		if (window.XMLHttpRequest)
 			return new XMLHttpRequest();
@@ -14,8 +14,8 @@ define([], function () {
 			body: "",
 			accepts: "text/html"
 		};
-		
-		this.extend(base, options);
+
+		o(base).extend(options);
 
 		var def = deferred();
 
