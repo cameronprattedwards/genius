@@ -5,6 +5,9 @@ define([], function () {
 
 	ArrayWrapper.prototype = {
 		map: function (callback) {
+			if (Array.prototype.map)
+				return Array.prototype.map.apply(this.array, arguments);
+
 			var output = [];
 
 			for (var i = 0; i < this.array.length; i++) {
@@ -20,6 +23,9 @@ define([], function () {
 			return output;
 		},
 		filter: function (callback) {
+			if (Array.prototype.filter)
+				return Array.prototype.filter.apply(this.array, arguments);
+
 			var output = [];
 
 			for (var i = 0; i < this.array.length; i++) {
@@ -30,6 +36,9 @@ define([], function () {
 			return output;
 		},
 		indexOf: function (value) {
+			if (Array.prototype.indexOf)
+				return Array.prototype.indexOf.apply(this.array, arguments);
+
 			var arr = this.array;
 
 			for (var i = 0; i < arr.length; i++) {
@@ -40,6 +49,9 @@ define([], function () {
 			return -1;
 		},
 		forEach: function (callback) {
+			if (Array.prototype.forEach)
+				return Array.prototype.forEach.apply(this.array, arguments);
+
 			var arr = this.array;
 
 			for (var i = 0; i < arr.length; i++) {
@@ -80,6 +92,31 @@ define([], function () {
 			}
 
 			return initialValue;
+		},
+		sync: function (array) {
+			var i = 0;
+
+			for ( ; i < array.length; i++) {
+				if (this.array[i] === array[i])
+					continue;
+
+				this.array.splice(i, 0, array[i]);
+			}
+
+			this.array.splice(i, this.array.length - i);
+
+			return this.array;
+		},
+		contains: function (value) {
+			return this.indexOf(value) !== -1;
+		},
+		remove: function (value) {
+			while (this.contains(value)) {
+				this.array.splice(this.indexOf(value), 1);
+			}
+		},
+		truncate: function () {
+			this.array.splice(0, this.array.length);
 		}
 	};
 

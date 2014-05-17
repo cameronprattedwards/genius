@@ -30,6 +30,11 @@ define([], function () {
 				delete output[exception];
 			}
 			return output;
+		},
+		forEach: function (callback) {
+			for (var x in this.object) {
+				callback.call(this.object[x], x, this.object[x]);
+			}
 		}
 	};
 
