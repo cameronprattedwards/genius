@@ -117,6 +117,13 @@ define([], function () {
 		},
 		truncate: function () {
 			this.array.splice(0, this.array.length);
+		},
+		slice: function () {
+			if (this.array.slice) {
+				return this.array.slice.apply(this.array, arguments);
+			}
+
+			return Array.prototype.slice.apply(this.array, arguments);
 		}
 	};
 
