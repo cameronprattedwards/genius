@@ -23,6 +23,9 @@ define([], function () {
 			}
 
 			return output;
+		},
+		trim: function () {
+			return this.string.replace(/^\s*/, "").replace(/\s*$/, "");
 		}
 	};
 
