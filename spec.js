@@ -3,7 +3,10 @@ var requirejs = require("requirejs"),
 
 requirejs.config({
 	baseUrl: __dirname,
-	nodeRequire: require
+	nodeRequire: require,
+	paths: {
+		"genius": "./"
+	}
 });
 
 suite("Garbago", function (done) {
@@ -12,7 +15,13 @@ suite("Garbago", function (done) {
 		requirejs([
 			"utils/spec/array",
 			"utils/spec/fs",
-			"utils/spec/deferred"
+			"utils/spec/deferred",
+			"mvc/view/adapters/client/nodes/spec/Node",
+			"mvc/view/adapters/client/nodes/spec/Document",
+			"mvc/view/adapters/client/factories/spec/Node",
+			"mvc/view/adapters/client/factories/spec/Document",
+			"mvc/view/adapters/client/factories/spec/Attribute",
+			"mvc/view/adapters/client/factories/spec/Html"
 			], function () {
 			done();
 		});
