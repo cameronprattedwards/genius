@@ -1,11 +1,8 @@
 {
   "name": "genius",
-  "version": "0.0.0",
-  "description": "A lightweight data framework for JavaScript applications",
-  "main": "genius.js",
-  "directories": {
-    "test": "test"
-  },
+  "version": "0.0.2",
+  "description": "A loosely-coupled, implementation-agnostic MVC framework",
+  "main": "config.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -13,16 +10,34 @@
     "type": "git",
     "url": "https://github.com/cameronprattedwards/genius.git"
   },
+  "keywords": [
+    "MVC",
+    "domain",
+    "modeling"
+  ],
   "author": "Cameron Edwards",
   "license": "ISC",
   "bugs": {
     "url": "https://github.com/cameronprattedwards/genius/issues"
   },
   "homepage": "https://github.com/cameronprattedwards/genius",
+  "dependencies": {
+    "body-parser": "*",
+    "express": "*",
+    "mocha": "*",
+    "mongojs": "*",
+    "passport": "*",
+    "passport-http": "*",
+    "requirejs": "*",
+    "bower": "*"
+  },
   "devDependencies": {
-    "grunt": "~0.4.1",
-    "grunt-bower-task": "~0.3.x",
-    "grunt-contrib-uglify": "~0.3.2",
-    "grunt-contrib-concat": "^0.3.0"
+    "karma": "~0.12.16",
+    "karma-mocha": "~0.1.3",
+    "karma-requirejs": "~0.2.1",
+    "karma-chrome-launcher": "~0.1.3",
+    "chai": "~1.9.1",
+    "karma-chai": "~0.1.0",
+    "karma-jasmine": "~0.1.5"
   }
 }
