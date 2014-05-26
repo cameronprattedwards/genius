@@ -13,7 +13,8 @@ define(["./Router"], function (baseRouter) {
 		},
 		setBaseNode: function (node) {
 			this.baseNode = node;
-		}
+		},
+		start: function () {}
 	};
 
 	return new MvcRouter();
